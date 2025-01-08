@@ -1,7 +1,6 @@
 using UnityEngine;
 
 public static class GameObjectExtensions {
-
     public static T FindChild<T>(this GameObject go, string name) where T : Component {
         if (go.transform.name == name) return go.transform.GetComponent<T>();
 

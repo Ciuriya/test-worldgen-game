@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class EditorStartFromLoading {
+
 #if UNITY_EDITOR
     public static int OtherScene = 1;
 

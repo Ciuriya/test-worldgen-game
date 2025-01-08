@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class LoadingScreenViewController : ViewController {
+
     public LoadingScreenView View => BaseView as LoadingScreenView;
 
     private float _lastDotIncreaseTime;

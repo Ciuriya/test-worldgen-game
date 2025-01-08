@@ -3,9 +3,10 @@ using UnityEngine;
 using static Enums;
 
 public class LoadingScreenView : View {
+
     public override ViewEnum ViewEnum => ViewEnum.LoadingScreen;
     public LoadingScreenViewController ViewController => BaseViewController as LoadingScreenViewController;
-    protected override GameObject _viewPrefab => GameCore.Instance.LoadingScreenPrefab;
+    protected override GameObject ViewPrefab => GameCore.Instance.GetSystem<PrefabSystem>().GetPrefab("LoadingScreenUI");
 
     private TMP_Text _loadingText;
 
@@ -13,6 +14,7 @@ public class LoadingScreenView : View {
 
     public override void LoadElements() {
         base.LoadElements();
+
         _loadingText = ViewRoot.FindChild<TMP_Text>("LoadingText");
     }
 

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine.SceneManagement;
 using static Enums;
 
@@ -16,7 +15,9 @@ public class UISystem : CoreSystem {
     private Dictionary<ViewEnum, ViewController> _viewDictionary;
     private Stack<ViewEnum> _viewStack;
 
-    public override void EarlyStart() {
+    public override void Start() {
+        base.Start();
+
         _viewDictionary = new Dictionary<ViewEnum, ViewController>();
         _viewStack = new Stack<ViewEnum>();
 
@@ -26,7 +27,7 @@ public class UISystem : CoreSystem {
     public override void EarlyUpdate() {
         base.EarlyUpdate();
 
-        foreach (ViewEnum viewEnum in _viewStack) 
+        foreach (ViewEnum viewEnum in _viewStack)
             GetViewController(viewEnum).EarlyUpdate();
     }
 
@@ -60,7 +61,7 @@ public class UISystem : CoreSystem {
             case 0:
                 SwitchView(ViewEnum.LoadingScreen);
                 break;
-            case 1: 
+            case 1:
                 SwitchView(ViewEnum.MainMenu);
                 break;
         }

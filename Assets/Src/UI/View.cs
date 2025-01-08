@@ -2,16 +2,17 @@ using UnityEngine;
 using static Enums;
 
 public abstract class View {
+
     public abstract ViewEnum ViewEnum { get; }
     public GameObject ViewRoot { get; private set; }
     public ViewController BaseViewController { get; private set; }
 
-    protected abstract GameObject _viewPrefab { get; }
+    protected abstract GameObject ViewPrefab { get; }
 
-    // add public event actions
+    // todo: add public event actions (OnViewStarted, etc.)
 
     public View(ViewController viewController) {
-        ViewRoot = Object.Instantiate(_viewPrefab);
+        ViewRoot = Object.Instantiate(ViewPrefab);
         BaseViewController = viewController;
 
         LoadElements();

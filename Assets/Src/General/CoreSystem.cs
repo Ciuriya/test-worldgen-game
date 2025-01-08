@@ -1,6 +1,7 @@
 using UnityEngine.SceneManagement;
 
 public abstract class CoreSystem {
+
     public virtual void EarlyStart() { }
     public virtual void Start() { }
     public virtual void LateStart() { }

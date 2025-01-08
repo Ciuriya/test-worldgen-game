@@ -1,6 +1,7 @@
 using UnityEngine;
 
 public abstract class ViewController {
+
     public View BaseView { get; protected set; }
 
     public ViewController() { }
