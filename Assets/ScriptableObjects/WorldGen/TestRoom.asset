@@ -13,4 +13,17 @@ MonoBehaviour:
   m_Name: TestRoom
   m_EditorClassIdentifier: 
   DisplayName: TestRoom
-  Color: {r: 0, g: 1, b: 0.96124196, a: 1}
+  Material: {fileID: 2100000, guid: 474e6dbda2a1a6a4bb5d505cd0c36fb1, type: 2}
+  Colors:
+  - serializedVersion: 2
+    rgba: 4294967040
+  - serializedVersion: 2
+    rgba: 4278255360
+  - serializedVersion: 2
+    rgba: 4278255615
+  - serializedVersion: 2
+    rgba: 4278190335
+  - serializedVersion: 2
+    rgba: 4294902015
+  - serializedVersion: 2
+    rgba: 4294901760

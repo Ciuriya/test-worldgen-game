@@ -8,7 +8,6 @@ public class Zone {
     public List<Corner> Corners;
     public List<Edge> Edges;
     public List<Zone> Neighbors;
-    public int MeshColorIndex;
 
     public Zone(Vector2 center, List<Corner> corners, Room room) {
         Center = center;

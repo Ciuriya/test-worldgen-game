@@ -19,8 +19,8 @@ public class WorldGenerator {
         float generationTime = Time.realtimeSinceStartup;
 
         _world = new World(GenerateVoronoi(), _data);
-        _world.GenerateMesh();
         _world.Load();
+        _world.GenerateMesh();
 
         generationTime = Time.realtimeSinceStartup - generationTime;
         Debug.Log($"Generated in {Mathf.RoundToInt(generationTime * 1000) / 1000.0f} seconds.");

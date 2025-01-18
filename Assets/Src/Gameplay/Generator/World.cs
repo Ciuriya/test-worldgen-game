@@ -1,7 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 using Delaunay;
-using static UnityEditor.Searcher.SearcherWindow.Alignment;
 
 public class World {
 
@@ -12,8 +11,6 @@ public class World {
     private WorldGeneratorData _data;
     private readonly Voronoi _voronoi;
     private GameObject _worldObject;
-    private Mesh _worldMesh;
-    private GameObject _lineObject;
 
     public World(Voronoi voronoi, WorldGeneratorData data) {
         _voronoi = voronoi;
@@ -171,15 +168,6 @@ public class World {
                         zone.SetRoom(rule.Output);
                         ruleApplications++;
 
-                        // update mesh colors after changing the zone
-                        // todo: can this be in the zone?
-                        Color[] colors = _worldMesh.colors;
-
-                        for (int ci = zone.MeshColorIndex; ci < zone.MeshColorIndex + zone.Corners.Count; ci++)
-                            colors[ci] = zone.Room != null ? zone.Room.Color : Color.white;
-
-                        _worldMesh.colors = colors;
-
                         if (ruleApplications >= rule.ApplicationLimit) break;
                     }
                 }
@@ -308,142 +296,26 @@ public class World {
 
     public void GenerateMesh() {
         if (_worldObject != null) Object.Destroy(_worldObject);
-        if (_lineObject != null) Object.Destroy(_lineObject);
 
         _worldObject = new GameObject("Map");
         //_worldObject.layer = LayerMask.NameToLayer("Graph");
         _worldObject.transform.position = new Vector3(0f, 0f, 0f);
 
-        MeshCollider collider = _worldObject.AddComponent<MeshCollider>();
-        MeshRenderer renderer = _worldObject.AddComponent<MeshRenderer>();
-        MeshFilter filter = _worldObject.AddComponent<MeshFilter>();
-        Mesh mesh = new Mesh();
+        // todo: bake these into world gen settings later, probably in the WorldMapExtruder itself
+        WorldMapExtruder extruder = _worldObject.AddComponent<WorldMapExtruder>();
+        extruder.MeshDefaultMaterial = _data.ZoneMaterial;
+        extruder.ShadowMode = UnityEngine.Rendering.ShadowCastingMode.On;
+        extruder.ExtrusionDepth = 1;
+        extruder.ExtrusionHeight = 1;
+        extruder.Layer = "Default";
+        extruder.ExtrudeOnStart = false;
+        extruder.World = this;
 
-        _worldMesh = mesh;
-        filter.mesh = mesh;
-
-        List<Vector3> vertices = new List<Vector3>();
-        List<Material> materials = new List<Material>();
-        List<Color> colors = new List<Color>();
-        int currentStartVertexIndex = 0;
-
-        BuildMeshForZones(mesh, ref vertices, ref materials, ref colors, ref currentStartVertexIndex);
-
-        // same as above but with line topology, so no tris
-        _lineObject = new GameObject("Lines");
-        _lineObject.transform.position = new Vector3(0f, 0f, -0.01f);
-
-        MeshRenderer lineRenderer = _lineObject.AddComponent<MeshRenderer>();
-        MeshFilter lineFilter = _lineObject.AddComponent<MeshFilter>();
-        Mesh lineMesh = new Mesh();
-
-        lineFilter.mesh = lineMesh;
-
-        List<int> indices = new List<int>();
-
-        foreach (Zone zone in Zones)
-            BuildLinesForZone(zone, ref vertices, ref indices, ref currentStartVertexIndex);
-
-        lineMesh.vertices = vertices.ToArray();
-        lineMesh.SetIndices(indices, MeshTopology.Lines, 0);
-
-        renderer.materials = materials.ToArray();
-        lineRenderer.material = _data.LineMaterial;
-        collider.sharedMesh = mesh;
-    }
-
-    private void BuildMeshForZones(Mesh mesh, ref List<Vector3> vertices, ref List<Material> materials, ref List<Color> colors, ref int currentStartVertexIndex) {
-        mesh.subMeshCount = Zones.Count;
-
-        foreach (Zone zone in Zones) {
-            Color color = zone.Room != null ? zone.Room.Color : Color.white;
-
-            zone.MeshColorIndex = colors.Count; // to be able to update this later
-
-            foreach (Corner c in zone.Corners) {
-                vertices.Add(c.Coord);
-                colors.Add(color);
-            }
-        }
-
-        // we have to set here or setting triangles won't work
-        mesh.vertices = vertices.ToArray();
-        mesh.colors = colors.ToArray();
-
-        for (int i = 0; i < Zones.Count; i++) {
-            Zone zone = Zones[i];
-            List<Vector2> zoneVertices = new List<Vector2>();
-
-            foreach (Corner c in zone.Corners)
-                zoneVertices.Add(c.Coord);
-
-            // finding all triangles with an external library
-            Triangulator t = new Triangulator(zoneVertices.ToArray());
-            int[] tris = t.Triangulate();
-
-            // adjust library's result to fit with the overall mesh vertices
-            for (int j = 0; j < tris.Length; j++)
-                tris[j] += currentStartVertexIndex;
-
-            // filling every submesh with the right tris
-            mesh.SetTriangles(tris, i);
-            materials.Add(_data.ZoneMaterial);
-            currentStartVertexIndex += zoneVertices.Count;
-        }
-
-        currentStartVertexIndex = 0;
-        vertices.Clear();
-    }
-
-    private void BuildLinesForZone(Zone zone, ref List<Vector3> vertices, ref List<int> indices, ref int currentStartVertexIndex) {
-        List<Vector3> zoneVertices = new List<Vector3>();
-        List<Vector3> finalZoneVertices = new List<Vector3>();
-
-        foreach (Corner c in zone.Corners)
-            zoneVertices.Add(c.Coord);
-
-        int verticesPerCorner = (_data.LineThickness - 1) * 2 + 1;
-
-        // for each vertex we add the next, so we're forming lines
-        // we also have line thickness built-in, which adds two vertices to draw a line next to the original line
-        // it's not very optimized, but there's no other option when forming a mesh to have line thickness
-        for (int j = 0; j < zoneVertices.Count; j++) {
-            int actualJ = j * verticesPerCorner;
-            int currentVertexIndex = currentStartVertexIndex + actualJ;
-            int nextVertexIndex = j + 1 == zoneVertices.Count ? currentStartVertexIndex : currentStartVertexIndex + actualJ + verticesPerCorner;
-
-            Vector3 currentVertice = zoneVertices[j];
-            Vector3 nextVertice = zoneVertices[j + 1 == zoneVertices.Count ? 0 : j + 1];
-
-            Vector3 lineOffset = Vector2.Perpendicular(currentVertice - nextVertice);
-            lineOffset = lineOffset.normalized * 0.005f;
-
-            finalZoneVertices.Add(currentVertice);
-
-            bool isPositive = false;
-            for (int k = 1; k < _data.LineThickness; k++) {
-                int actualK = (k - 1) * 2 + 1;
-                Vector3 updatedLineOffset = lineOffset * (k / 2 + 1);
-                finalZoneVertices.Add(zoneVertices[j] + updatedLineOffset * (isPositive ? 1 : -1));
-                finalZoneVertices.Add(nextVertice + updatedLineOffset * (isPositive ? 1 : -1));
-
-                indices.Add(currentVertexIndex + actualK);
-                indices.Add(currentVertexIndex + actualK + 1);
-
-                isPositive = !isPositive;
-            }
-
-            indices.Add(currentVertexIndex);
-            indices.Add(nextVertexIndex);
-        }
-
-        currentStartVertexIndex += finalZoneVertices.Count;
-        vertices.AddRange(finalZoneVertices);
+        extruder.Extrude();
     }
 
     public void Destroy() {
         if (_worldObject != null) Object.Destroy(_worldObject);
-        if (_lineObject != null) Object.Destroy(_lineObject);
 
         Zones.Clear();
     }
