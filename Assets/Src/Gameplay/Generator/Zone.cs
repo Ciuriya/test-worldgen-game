@@ -33,13 +33,17 @@ public class Zone {
     }
 
     public float FindPercentDistanceFromEdge(Rect bounds) {
-        // finding nearest edge distance
-        float xDist = bounds.width / 2 - Mathf.Abs(Center.x - bounds.width / 2);
-        float yDist = bounds.height / 2 - Mathf.Abs(Center.y - bounds.height / 2);
+        FindDistanceFromEdge(bounds, out float xDist, out float yDist);
 
         // then converting to percentage of map (up to 50%, that's center)
         if (xDist < yDist) return xDist / bounds.width * 100f;
         else return yDist / bounds.height * 100f;
+    }
+
+    public void FindDistanceFromEdge(Rect bounds, out float xDist, out float yDist) {
+        // finding nearest edge distance
+        xDist = bounds.width / 2 - Mathf.Abs(Center.x - bounds.width / 2);
+        yDist = bounds.height / 2 - Mathf.Abs(Center.y - bounds.height / 2);
     }
 
     public int FindDistanceToNearestZone(List<Zone> zonesToCheck) {

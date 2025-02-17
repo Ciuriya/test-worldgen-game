@@ -8,13 +8,14 @@ public class World {
     public List<Corner> Corners;
     public List<Edge> Edges;
 
-    private WorldGeneratorData _data;
-    private readonly Voronoi _voronoi;
+    public readonly WorldGeneratorData Data;
+    public readonly Voronoi Voronoi;
+
     private GameObject _worldObject;
 
     public World(Voronoi voronoi, WorldGeneratorData data) {
-        _voronoi = voronoi;
-        _data = data;
+        Voronoi = voronoi;
+        Data = data;
 
         Zones = new List<Zone>();
         Corners = new List<Corner>();
@@ -24,15 +25,15 @@ public class World {
     }
 
     public void Load() {
-        ApplyGrammarRules(_data.GrammarRules);
+        ApplyGrammarRules(Data.GrammarRules);
     }
 
     private void LoadZones() {
         // we save everything into our own types to avoid modifying the library
         // regions are zones here
-        List<List<Vector2>> regions = _voronoi.Regions();
-        List<Vector2> regionCenters = _voronoi.SiteCoords();
-        List<Delaunay.Edge> regionEdges = _voronoi.Edges();
+        List<List<Vector2>> regions = Voronoi.Regions();
+        List<Vector2> regionCenters = Voronoi.SiteCoords();
+        List<Delaunay.Edge> regionEdges = Voronoi.Edges();
 
         for (int i = 0; i < regions.Count; i++) {
             List<Vector2> region = regions[i];
@@ -155,7 +156,7 @@ public class World {
                     matchingZones.RemoveAt(index);
                     rejectedZones.Add(zone);
 
-                    float distFromEdge = zone.FindPercentDistanceFromEdge(_voronoi.plotBounds);
+                    float distFromEdge = zone.FindPercentDistanceFromEdge(Voronoi.plotBounds);
 
                     if (distFromEdge < input.DistanceFromEdge.Min || distFromEdge > input.DistanceFromEdge.Max)
                         continue;
@@ -303,7 +304,7 @@ public class World {
 
         // todo: bake these into world gen settings later, probably in the WorldMapExtruder itself
         WorldMapExtruder extruder = _worldObject.AddComponent<WorldMapExtruder>();
-        extruder.MeshDefaultMaterial = _data.ZoneMaterial;
+        extruder.MeshDefaultMaterial = Data.ZoneMaterial;
         extruder.ShadowMode = UnityEngine.Rendering.ShadowCastingMode.On;
         extruder.ExtrusionDepth = 1;
         extruder.ExtrusionHeight = 1;

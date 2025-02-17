@@ -10,5 +10,5 @@ public class Room : ScriptableObject {
     public Material Material;
 
     [Tooltip("The color representing this room to the user")]
-    public Color32[] Colors;
+    public Color Color;
 }
