@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 using Delaunay;
+using static UnityEngine.RuleTile.TilingRuleOutput;
 
 public class World {
 
@@ -9,7 +10,7 @@ public class World {
     public List<Edge> Edges;
 
     public readonly WorldGeneratorData Data;
-    public readonly Voronoi Voronoi;
+    private readonly Voronoi Voronoi;
 
     private GameObject _worldObject;
 
@@ -21,7 +22,7 @@ public class World {
         Corners = new List<Corner>();
         Edges = new List<Edge>();
 
-        LoadZones();
+        LoadZones(); 
     }
 
     public void Load() {
