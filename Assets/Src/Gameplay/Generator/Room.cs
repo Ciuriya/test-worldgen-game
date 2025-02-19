@@ -9,6 +9,9 @@ public class Room : ScriptableObject {
     [Tooltip("The material representing this room to the user")]
     public Material Material;
 
+    [Tooltip("The texture applied to this room? idk this is a bit sus")]
+    public Texture Texture;
+
     [Tooltip("The color representing this room to the user")]
     public Color Color;
 }

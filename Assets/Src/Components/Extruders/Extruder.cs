@@ -30,21 +30,6 @@ public abstract class Extruder : MonoBehaviour {
 
     [HideInInspector] public List<GameObject> Extrusions = new List<GameObject>();
 
-    void OnDrawGizmos() {
-        foreach (GameObject extrusion in Extrusions) {
-            if (extrusion.tag != "Player") continue;
-
-            Mesh mesh = extrusion.GetComponent<MeshFilter>().mesh;
-
-            Gizmos.color = Color.red;
-            Vector3 center = extrusion.transform.position + mesh.bounds.center + new Vector3(0, 0, ExtrusionDepth / 2);
-            Gizmos.DrawLine(center, center + mesh.normals[0].normalized * 0.1f);
-
-            Gizmos.color = Color.blue;
-            Gizmos.DrawLine(center, center + (Vector3) mesh.tangents[0].normalized * 0.025f);
-        }
-    }
-
     public virtual void Start() {
         if (!ExtrudeOnStart || !CanExtrude()) return;
 
@@ -172,6 +157,10 @@ public abstract class Extruder : MonoBehaviour {
 
             countTris += 6;
         }
+    }
+
+    protected void RotateVerticeToMatchParentRotation(ref Vector3 vertex) {
+        vertex = transform.rotation * vertex;
     }
 
     [StructLayout(LayoutKind.Sequential)]

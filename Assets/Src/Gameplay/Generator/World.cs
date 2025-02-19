@@ -302,6 +302,7 @@ public class World {
         _worldObject = new GameObject("Map");
         //_worldObject.layer = LayerMask.NameToLayer("Graph");
         _worldObject.transform.position = new Vector3(0f, 0f, 0f);
+        _worldObject.transform.Rotate(90, 0, 0);
 
         // todo: bake these into world gen settings later, probably in the WorldMapExtruder itself
         WorldMapExtruder extruder = _worldObject.AddComponent<WorldMapExtruder>();

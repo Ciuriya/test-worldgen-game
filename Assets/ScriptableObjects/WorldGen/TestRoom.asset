@@ -14,4 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   DisplayName: TestRoom
   Material: {fileID: 2100000, guid: 474e6dbda2a1a6a4bb5d505cd0c36fb1, type: 2}
-  Color: {r: 0, g: 0, b: 0, a: 1}
+  Texture: {fileID: 10309, guid: 0000000000000000f000000000000000, type: 0}
+  Color: {r: 1, g: 1, b: 1, a: 1}
