@@ -1,0 +1,7 @@
+# .cursorignore
+*.csproj
+*.sln
+Library/
+obj/
+Logs/
+Temp/
