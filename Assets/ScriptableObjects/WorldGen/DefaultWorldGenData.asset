@@ -18,5 +18,5 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 4980d5294703fcd4080f980ef6d0bd56, type: 2}
   MapSize: {x: 50, y: 50}
   LineThickness: 10
-  ZoneMaterial: {fileID: 2100000, guid: 474e6dbda2a1a6a4bb5d505cd0c36fb1, type: 2}
+  ZoneMaterial: {fileID: 2100000, guid: 1b4d4c2d05f56764ea50f02ff40e9396, type: 2}
   LineMaterial: {fileID: 2100000, guid: cd97eea8c1fd59046981b62f0f376c43, type: 2}

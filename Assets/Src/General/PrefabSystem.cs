@@ -38,7 +38,7 @@ public class PrefabSystem : CoreSystem {
         if (_loadedScriptableObjects.ContainsKey(name.ToLowerInvariant())) {
             ScriptableObject obj = _loadedScriptableObjects[name.ToLowerInvariant()];
 
-            if (obj is T) return (T) obj;
+            if (obj is T t) return t;
         }
 
         return null;

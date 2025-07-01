@@ -4,6 +4,8 @@ using Unity.Collections;
 using Unity.Mathematics;
 using Random = UnityEngine.Random;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 public class WorldMapExtruder : Extruder {
 
@@ -13,27 +15,31 @@ public class WorldMapExtruder : Extruder {
     public override void Extrude() {
         if (!CanExtrude()) return;
 
+        List<(Corner, Corner)> edgesGenerated = new List<(Corner, Corner)>();
+
         foreach (Zone zone in World.Zones)
-            CreateZoneMesh(zone, transform);
+            CreateZoneMesh(zone, transform, ref edgesGenerated);
     }
 
-    private void CreateZoneMesh(Zone zone, Transform parent) {
+    private void CreateZoneMesh(Zone zone, Transform parent, ref List<(Corner, Corner)> edgesGenerated) {
         int cornerCount = zone.Corners.Count;
-
         GameObject zoneFloor = CreateZoneFloorMesh(zone, parent);
 
         // generating edges all around
         for (int i = 0; i < cornerCount; ++i) {
-            Vector2 coordOne = zone.Corners[i].Coord;
-            Vector2 coordTwo = zone.Corners[cornerCount == i + 1 ? 0 : i + 1].Coord;
+            Corner cornerOne = zone.Corners[i];
+            Corner cornerTwo = zone.Corners[cornerCount == i + 1 ? 0 : i + 1];
+            (Corner, Corner) cornerPair = SortCornerPair(cornerOne, cornerTwo);
 
-            // baaaaaarely moving them towards the center so they don't have z-fighting
-            coordOne += (zone.Center - coordOne).normalized * 0.0001f;
-            coordTwo += (zone.Center - coordTwo).normalized * 0.0001f;
+            if (edgesGenerated.Contains(cornerPair)) continue;
 
-            GameObject edgeObject = CreateEdgeMesh(zone, zoneFloor.transform, coordOne, coordTwo);
+            Zone neighbor = zone.Neighbors.Find(z => z.Corners.Contains(cornerOne) && z.Corners.Contains(cornerTwo));
+            CreateEdgeMesh(zone, neighbor, zoneFloor.transform, cornerOne.Coord, cornerTwo.Coord);
+
+            edgesGenerated.Add(cornerPair);
         }
     }
+
     private GameObject CreateZoneFloorMesh(Zone zone, Transform parent) {
         int cornerCount = zone.Corners.Count;
         Vector2[] points = new Vector2[cornerCount];
@@ -44,10 +50,11 @@ public class WorldMapExtruder : Extruder {
             vertices[i] = new Vector3(points[i].x, points[i].y, ExtrusionDepth);
         }
 
-        return CreateMesh(zone, parent, zone.Room ? zone.Room.name : "No Zone", points, vertices, null, true);
+        return CreateMesh(zone.Center, parent, zone.Room ? zone.Room.name : "No Zone", 
+                          points, vertices, new Room[] { zone.Room });
     }
 
-    private GameObject CreateEdgeMesh(Zone zone, Transform parent, Vector2 cornerOne, Vector2 cornerTwo) {
+    private GameObject CreateEdgeMesh(Zone zone, Zone neighbor, Transform parent, Vector2 cornerOne, Vector2 cornerTwo) {
         Vector3[] positions = new Vector3[4] {
             new Vector3(cornerOne.x, cornerOne.y, -ExtrusionDepth), // front
             new Vector3(cornerOne.x, cornerOne.y, ExtrusionDepth), // back
@@ -55,29 +62,41 @@ public class WorldMapExtruder : Extruder {
             new Vector3(cornerTwo.x, cornerTwo.y, ExtrusionDepth)  // back
         };
 
-        return CreateMesh(zone, parent, (zone.Room ? zone.Room.name : "No Zone") + " Edge", 
-                          new Vector2[] { cornerOne, cornerTwo }, positions, new ushort[] { 0, 2, 1, 1, 2, 3 }, false);
+        Vector3 center = (cornerOne + cornerTwo) / 2f;
+
+        return CreateMesh(center, 
+                          parent, (zone.Room ? zone.Room.name : "No Zone") + " Edge", 
+                          new Vector2[] { cornerOne, cornerTwo }, positions, 
+                          new Room[] { zone.Room, neighbor?.Room }, true,
+                          new ushort[] { 1, 2, 0, 3, 2, 1 },
+                          new ushort[] { 0, 2, 1, 1, 2, 3 });
     }
 
-    private GameObject CreateMesh(Zone zone, Transform parent, string name, Vector2[] points, Vector3[] positions, 
-                                  ushort[] triangles = null, bool overrideNormalsForFlatSurface = false) {
-        if (triangles == null) {
-            Triangulator triangulator = new Triangulator(points);
-            triangles = Array.ConvertAll(triangulator.Triangulate(), val => checked((ushort) val));
-        }
+    private GameObject CreateMesh(Vector3 center, Transform parent, string name, Vector2[] points, Vector3[] positions,
+                                  Room[] rooms, bool renderOneFacePerSubmesh = false,
+                                  params ushort[][] trianglesParam) {
+        ushort[] allTriangles;
 
-        Vector3 globalCoords = new Vector3(zone.Center.x, zone.Center.y, 0);
+        // generate tris if we don't have some explicitly set
+        if (trianglesParam.Length == 0) {
+            Triangulator triangulator = new Triangulator(points);
+            allTriangles = Array.ConvertAll(triangulator.Triangulate(), val => checked((ushort) val));
+        } else allTriangles = trianglesParam.SelectMany(a => a).ToArray();
+
+        Vector3 globalCoords = new Vector3(center.x, center.y, 0);
         RotateVerticeToMatchParentRotation(ref globalCoords);
 
         Mesh.MeshDataArray meshDataArray = Mesh.AllocateWritableMeshData(1);
         Mesh.MeshData meshData = meshDataArray[0];
 
+        // set descriptor layout for vertices
         NativeArray<VertexAttributeDescriptor> vertexLayout = GetVertexLayout();
         meshData.SetVertexBufferParams(positions.Length, vertexLayout);
         vertexLayout.Dispose();
 
         NativeArray<CustomVertex> vertices = meshData.GetVertexData<CustomVertex>();
 
+        // adjust positions from global to local coords
         for (int i = 0; i < positions.Length; ++i) {
             Vector3 updatedPosition = positions[i];
             RotateVerticeToMatchParentRotation(ref updatedPosition);
@@ -85,6 +104,80 @@ public class WorldMapExtruder : Extruder {
             positions[i] = updatedPosition;
         }
 
+        Bounds bounds = CalculateBounds(positions);
+
+        // calc normals
+        Vector3 extrusionHeight = new Vector3(0, 0, ExtrusionHeight);
+        RotateVerticeToMatchParentRotation(ref extrusionHeight);
+
+        CalculateNormals(positions, // use the first sub-mesh for normal calc
+                         trianglesParam.Length > 0 ? trianglesParam[0] : allTriangles, 
+                         out Vector3 normal, out half4 tangent);
+
+        // build vertices
+        CustomVertex vertex = new CustomVertex() {
+            normal = normal,
+            tangent = tangent
+        };
+
+        for (int i = 0; i < positions.Length; ++i) {
+            vertex.position = positions[i];
+            vertex.texCoord0 = CalculateUVs(vertex.position, bounds);
+            vertices[i] = vertex;
+        }
+
+        // load triangles into mesh
+        meshData.SetIndexBufferParams(allTriangles.Length, IndexFormat.UInt16);
+        NativeArray<ushort> triangleIndices = meshData.GetIndexData<ushort>();
+
+        triangleIndices.CopyFrom(allTriangles);
+
+        meshData.subMeshCount = trianglesParam.Length > 0 ? trianglesParam.Length : 1;
+
+        List<Material> materials = new List<Material>();
+
+        // create materials
+        if (meshData.subMeshCount == 1) materials.Add(Instantiate(rooms[0]?.Material ?? MeshDefaultMaterial));
+        else {
+            for (int i = 0; i < meshData.subMeshCount; ++i) {
+                Room room = rooms.Length > i ? rooms[i] : null;
+                materials.Add(Instantiate(room?.Material ?? MeshDefaultMaterial));
+            }
+        }
+
+        // setup sub-meshes
+        int triangleIndex = 0;
+        for (int i = 0; i < meshData.subMeshCount; ++i) {
+            // setup tris
+            ushort[] subMeshTriangles = trianglesParam.Length == 0 ? allTriangles : trianglesParam[i];
+
+            meshData.SetSubMesh(i, new SubMeshDescriptor(triangleIndex, subMeshTriangles.Length));
+            triangleIndex += subMeshTriangles.Length;
+
+            // setup mat
+            Room room = rooms.Length > i ? rooms[i] : null;
+            Material mat = materials[i];
+
+            mat.SetTexture("_BaseMap", room?.Texture ?? null);
+            mat.SetColor("_BaseColor", room?.Color ?? new Color(Random.Range(0, 1f), Random.Range(0, 1f), Random.Range(0, 1f), 1.0f));
+            
+            if (renderOneFacePerSubmesh) 
+                mat.SetFloat("_Cull", (float) CullMode.Back);
+        }
+
+        // create mesh and load data into it
+        Mesh mesh = new Mesh() { bounds = bounds, name = "Custom Mesh" };
+
+        Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, mesh, MeshUpdateFlags.DontRecalculateBounds);
+        vertices.Dispose();
+
+        GameObject meshObject = CreateGameObjectFromMesh(mesh, parent, name, materials.ToArray());
+        meshObject.transform.position += globalCoords + extrusionHeight;
+
+        return meshObject;
+    }
+
+    private Bounds CalculateBounds(Vector3[] positions) {
         Vector3 min = Vector2.positiveInfinity;
         Vector3 max = Vector2.negativeInfinity;
 
@@ -97,77 +190,52 @@ public class WorldMapExtruder : Extruder {
             if (position.z > max.z) max.z = position.z;
         }
 
-        Bounds bounds = new Bounds(new Vector3((max.x - min.x) / 2f + min.x,
-                                               (max.y - min.y) / 2f + min.y,
-                                               (max.z - min.z) / 2f + min.z),
-                                   max - min);
-
-        Vector3 extrusionHeight = new Vector3(0, 0, ExtrusionHeight);
-        RotateVerticeToMatchParentRotation(ref extrusionHeight);
-
-        CalculateNormals(positions, triangles, out Vector3 normal, out half4 tangent, 
-                         overrideNormalsForFlatSurface ? globalCoords + extrusionHeight : Vector3.zero);
-
-        Color color = zone.Room?.Color ?? new Color(Random.Range(0, 1f), Random.Range(0, 1f), Random.Range(0, 1f), 1.0f);
-
-        CustomVertex vertex = new CustomVertex() {
-            normal = normal,
-            tangent = tangent,
-            color = color
-        };
-
-        for (int i = 0; i < positions.Length; ++i) {
-            vertex.position = positions[i];
-            vertex.texCoord0 = new half2(new half((positions[i].x - bounds.min.x) / bounds.size.x), 
-                                         new half((positions[i].y - bounds.min.y) / bounds.size.y));
-            vertices[i] = vertex;
-        }
-
-        meshData.SetIndexBufferParams(triangles.Length, IndexFormat.UInt16);
-        NativeArray<ushort> triangleIndices = meshData.GetIndexData<ushort>();
-
-        triangleIndices.CopyFrom(triangles);
-
-        meshData.subMeshCount = 1;
-        meshData.SetSubMesh(0, new SubMeshDescriptor(0, triangles.Length));
-
-        Mesh mesh = new Mesh() { bounds = bounds, name = "Custom Mesh" };
-
-        Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, mesh, MeshUpdateFlags.DontRecalculateBounds);
-        vertices.Dispose();
-
-        Material mat = Instantiate(zone.Room?.Material ?? MeshDefaultMaterial);
-        if (zone.Room != null) mat.SetTexture("_MainTex", zone.Room.Texture);
-        else mat.SetTexture("_MainTex", null);
-
-        GameObject meshObject = CreateGameObjectFromMesh(mesh, parent, name, new Material[] { mat });
-        meshObject.transform.position += globalCoords + extrusionHeight;
-        return meshObject;
+        return new Bounds(new Vector3((max.x - min.x) / 2f + min.x,
+                                      (max.y - min.y) / 2f + min.y,
+                                      (max.z - min.z) / 2f + min.z),
+                          max - min);
     }
 
-    // note: this is a very precise function currently (averages all tris), it can be lightened up as needed
-    private void CalculateNormals(Vector3[] positions, ushort[] triangles, out Vector3 normal, out half4 tangent, Vector3 zoneCenter) {
-        bool useZoneCenter = zoneCenter != Vector3.zero;
-        Vector3 averageX = Vector3.zero;
-        Vector3 averageY = Vector3.zero;
-        int count = 0;
+    private void CalculateNormals(Vector3[] positions, ushort[] triangles, out Vector3 normal, out half4 tangent) {
+        Vector3 nSum = Vector3.zero;
+        Vector3 tSum = Vector3.zero;
 
         for (int i = 0; i < triangles.Length; i += 3) {
-            // we're using the zone center because it kept giving normals that were all zeroes (since they were on the same surface)
-            Vector3 p1 = useZoneCenter ? zoneCenter : positions[triangles[i]];
-            Vector3 p2 = positions[triangles[i + 1]];
-            Vector3 p3 = positions[triangles[i + 2]];
+            Vector3 p0 = positions[triangles[i]];
+            Vector3 p1 = positions[triangles[i + 1]];
+            Vector3 p2 = positions[triangles[i + 2]];
 
-            averageX += (p2 - p1).normalized;
-            averageY += (p3 - p1).normalized;
+            // area-weighted face normal
+            Vector3 face = Vector3.Cross(p1 - p0, p2 - p0);
+            nSum += face;
 
-            count++;
+            // use the first edge as a tangent candidate
+            tSum += p1 - p0;
         }
 
-        averageX /= count;
-        averageY /= count;
+        normal = nSum.normalized;
 
-        normal = -Vector3.Cross(averageX, averageY).normalized;
-        tangent = new half4(new float4(averageX, -1f));
+        Vector3 tan3 = Vector3.ProjectOnPlane(tSum, normal).normalized;
+        tangent = new half4(new float4(tan3, 1f)); // −1 to flip
+    }
+
+    private half2 CalculateUVs(Vector3 position, Bounds bounds) {
+        // todo: update this to work with tile sizes
+        float x = new half((position.x - bounds.min.x) / bounds.size.x);
+        float y = new half((position.y - bounds.min.y) / bounds.size.y);
+        float z = new half((position.z - bounds.min.z) / bounds.size.z);
+        half u, v;
+
+        if (!Mathf.Approximately(bounds.size.x, 0)) u = new half(x);
+        else u = new half(z);
+
+        if (!Mathf.Approximately(bounds.size.y, 0)) v = new half(y);
+        else v = new half(z);
+
+        return new half2(u, v);
+    }
+
+    private static (Corner,Corner) SortCornerPair(Corner a, Corner b) {
+        return a.GetHashCode() <= b.GetHashCode() ? (a, b) : (b, a);
     }
 }

@@ -55,15 +55,13 @@
         "UserSettings/": true,
         "temp/": true,
         "Temp/": true,
-        "**/*.csproj":        true,
-        "**/*.csproj.*":      true,
-        "**/*.sln":           true
+        "**/*.csproj.*": true
     },
     "search.exclude": {
-        "**/*.csproj":  true,
-        "**/*.sln":     true,
+        "**/*.csproj": true,
+        "**/*.sln": true,
         "**/Library/**": true,
-        "**/obj/**":     true
+        "**/obj/**": true
     },
     "dotnet.defaultSolution": "test-worldgen-game.sln"
 }
