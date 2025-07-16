@@ -9,9 +9,12 @@ public class Room : ScriptableObject {
     [Tooltip("The material representing this room to the user")]
     public Material Material;
 
-    [Tooltip("The texture applied to this room? idk this is a bit sus")]
-    public Texture Texture;
+    [Tooltip("The atlas this room's index map takes from")]
+    public Texture AtlasTexture;
 
-    [Tooltip("The color representing this room to the user")]
-    public Color Color;
+    [Tooltip("The grid size of this atlas")]
+    public int AtlasGridSize;
+
+    [Tooltip("The index map that dictates this room's layout")]
+    public Texture IndexMapTexture;
 }

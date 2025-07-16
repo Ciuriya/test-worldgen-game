@@ -1,0 +1,42 @@
+.main-panel {
+    width: 100%;
+    height: 100%;
+}
+
+.atlas-panel-element {
+    width: 95%;
+}
+
+.atlas-panel ObjectField Label {
+    min-width: 80px;
+}
+
+.atlas-panel .atlas-image-viewport {
+    margin: 4px;
+    justify-content: center;
+    overflow: hidden;
+    border-color: #000000;
+    border-width: 1px;
+}
+
+.atlas-panel .atlas-image-viewport Image {
+    width: 100%;
+    height: 100%;
+}
+
+.draw-panel {
+    width: 100%;
+}
+
+.draw-panel .draw-image-viewport {
+    margin: 4px;
+    justify-content: center;
+    overflow: hidden;
+    border-color: #000000;
+    border-width: 1px;
+}
+
+.draw-panel .draw-image-viewport Image {
+    width: 100%;
+    height: 100%;
+}

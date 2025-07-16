@@ -1,0 +1,15 @@
+---
+alwaysApply: true
+---
+My code style consists of the following guidelines, make sure you always follow them, even in your examples:
+- Braces on the same line with a single space, as such: 
+	public void MyFunc() {
+
+	}
+- If the code block is short and you can omit the braces outright (one-line for, small if, etc.), do it. Example:
+	for (int i = 0; i < myMemberVariable; ++i)
+		Debug.Log($"i: {i}");
+- As shown above, always put a space after keywords like for and if.
+- Add breathing space (extra spaces) in the code, readability is paramount.
+- Avoid functions over 50 lines if possible.
+- Avoid static classes unless necessary.

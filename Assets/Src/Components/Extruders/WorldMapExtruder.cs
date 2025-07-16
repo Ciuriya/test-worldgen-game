@@ -67,13 +67,13 @@ public class WorldMapExtruder : Extruder {
         return CreateMesh(center, 
                           parent, (zone.Room ? zone.Room.name : "No Zone") + " Edge", 
                           new Vector2[] { cornerOne, cornerTwo }, positions, 
-                          new Room[] { zone.Room, neighbor?.Room }, true,
+                          new Room[] { zone.Room, neighbor?.Room }, true, true,
                           new ushort[] { 1, 2, 0, 3, 2, 1 },
                           new ushort[] { 0, 2, 1, 1, 2, 3 });
     }
 
     private GameObject CreateMesh(Vector3 center, Transform parent, string name, Vector2[] points, Vector3[] positions,
-                                  Room[] rooms, bool renderOneFacePerSubmesh = false,
+                                  Room[] rooms, bool isWall = false, bool renderOneFacePerSubmesh = false,
                                   params ushort[][] trianglesParam) {
         ushort[] allTriangles;
 
@@ -122,7 +122,13 @@ public class WorldMapExtruder : Extruder {
 
         for (int i = 0; i < positions.Length; ++i) {
             vertex.position = positions[i];
-            vertex.texCoord0 = CalculateUVs(vertex.position, bounds);
+
+            Vector3 pointOne = points[0];
+
+            RotateVerticeToMatchParentRotation(ref pointOne);
+            pointOne -= globalCoords;
+
+            vertex.texCoord0 = CalculateUVs(vertex.position, pointOne, isWall);
             vertices[i] = vertex;
         }
 
@@ -158,9 +164,16 @@ public class WorldMapExtruder : Extruder {
             Room room = rooms.Length > i ? rooms[i] : null;
             Material mat = materials[i];
 
-            mat.SetTexture("_BaseMap", room?.Texture ?? null);
-            mat.SetColor("_BaseColor", room?.Color ?? new Color(Random.Range(0, 1f), Random.Range(0, 1f), Random.Range(0, 1f), 1.0f));
-            
+            if (room != null && room.AtlasTexture && room.IndexMapTexture && room.AtlasGridSize > 0) {
+                mat.SetTexture("_MainTex", room.AtlasTexture);
+                mat.SetTexture("_IndexTex", room.IndexMapTexture);
+
+                int cols = Mathf.CeilToInt(room.AtlasTexture.width / (float) room.AtlasGridSize);
+                int rows = Mathf.CeilToInt(room.AtlasTexture.height / (float) room.AtlasGridSize);
+
+                mat.SetVector("_AtlasDims", new Vector2(cols, rows));
+            }
+
             if (renderOneFacePerSubmesh) 
                 mat.SetFloat("_Cull", (float) CullMode.Back);
         }
@@ -219,20 +232,20 @@ public class WorldMapExtruder : Extruder {
         tangent = new half4(new float4(tan3, 1f)); // −1 to flip
     }
 
-    private half2 CalculateUVs(Vector3 position, Bounds bounds) {
-        // todo: update this to work with tile sizes
-        float x = new half((position.x - bounds.min.x) / bounds.size.x);
-        float y = new half((position.y - bounds.min.y) / bounds.size.y);
-        float z = new half((position.z - bounds.min.z) / bounds.size.z);
-        half u, v;
+    private half2 CalculateUVs(Vector3 position, Vector3 cornerOne, bool isWall) {
+        // could be changed to allow varying tile sizes (per room? per face?)
+        float tileSize = World.Data.TileSize;
 
-        if (!Mathf.Approximately(bounds.size.x, 0)) u = new half(x);
-        else u = new half(z);
+        // remove the y and find the distance between corner and position, aka edge position
+        float uValue = isWall ? 
+                        Vector2.Distance(new Vector2(position.x, position.z), 
+                                         new Vector2(cornerOne.x, cornerOne.z))
+                        : position.x;
 
-        if (!Mathf.Approximately(bounds.size.y, 0)) v = new half(y);
-        else v = new half(z);
-
-        return new half2(u, v);
+        return new half2(
+            new half(uValue / tileSize),
+            new half((isWall ? position.y : position.z) / tileSize)
+        );
     }
 
     private static (Corner,Corner) SortCornerPair(Corner a, Corner b) {

@@ -12,7 +12,9 @@ public class WorldGeneratorData : ScriptableObject {
 
     public List<GraphGrammarRule> GrammarRules;
 
-    public Vector2 MapSize;
+    public Vector2 MapSize; 
+
+    [Range(0, 5)] public float TileSize = 1f;
 
     [Range(1, 100)] public int LineThickness = 1;
 
