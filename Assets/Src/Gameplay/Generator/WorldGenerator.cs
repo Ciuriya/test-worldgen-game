@@ -14,7 +14,7 @@ public class WorldGenerator {
     // multi-thread? can this even be multi-threaded really? maybe update the gen text here? maybe make it a step enum system? no clue
     // could also be cool to make it into a loading animation
     public void StartGenerationSequence() {
-        if (_world != null) _world.Destroy();
+        _world?.Destroy();
 
         float generationTime = Time.realtimeSinceStartup;
 

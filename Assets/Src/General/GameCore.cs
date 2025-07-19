@@ -22,11 +22,6 @@ public class GameCore : MonoBehaviour {
             return;
         }
 
-#if UNITY_ANDROID || UNITY_IOS
-        //Application.targetFrameRate = Mathf.RoundToInt((float) Screen.currentResolution.refreshRateRatio.value);
-        Application.targetFrameRate = 120;
-#endif
-
         _sceneName = SceneManager.GetActiveScene().name;
 
         Instance = this;
@@ -49,7 +44,8 @@ public class GameCore : MonoBehaviour {
         _systems = new List<CoreSystem> {
             new PrefabSystem(),
             new UISystem(),
-            new GameplaySystem()
+            new GameplaySystem(),
+            new SettingsSystem()
         };
 
         foreach (CoreSystem system in _systems) system.EarlyStart();
