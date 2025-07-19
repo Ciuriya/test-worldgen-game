@@ -344,7 +344,7 @@ public partial class TilemapPainterEditor {
                 int sourceX = topLeft.x + x;
                 int sourceY = topLeft.y - y;
                 int sourcePixel = sourceY * width + sourceX;
-                int destPixel = y * atlasGridSize + x;
+                int destPixel = (atlasGridSize - 1 - y) * atlasGridSize + x;
 
                 if (sourcePixel >= 0 && sourcePixel < pixels.Length && 
                     destPixel >= 0 && destPixel < cellContents.Length)

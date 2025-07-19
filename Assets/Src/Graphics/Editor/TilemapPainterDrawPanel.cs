@@ -44,7 +44,8 @@ public partial class TilemapPainterEditor {
         atlasPanel.Add(drawTextureLoadField);
         atlasPanel.Add(drawTextureSaveButton);
 
-        OnDrawTextureResize += (newDrawImageSize) => ResizeDrawTexture(newDrawImageSize, drawPanel, drawImageViewport, drawImageContentArea);
+        OnDrawTextureResize += (newDrawImageSize) => ResizeDrawTexture(newDrawImageSize, drawPanel, drawImageViewport, 
+                                                                       drawImageContentArea, drawTextureSizeField);
         OnDrawTextureResize?.Invoke(drawImageSize);
 
         return drawPanel;
@@ -133,16 +134,38 @@ public partial class TilemapPainterEditor {
         };
         
         drawTextureLoadField.RegisterValueChangedCallback((evt) => {
-            drawTexture = evt.newValue is Texture2D text ? text : CreateDrawTexture();
+            Texture2D indexMap = evt.newValue is Texture2D text ? text : null;
+
+            if (indexMap == null) {
+                Debug.LogError("Invalid index map.");
+                return;
+            }
+
+            int width = indexMap.width;
+            int height = indexMap.height;
+
+            if (width != height) {
+                Debug.LogError("Width and Height are not equal, you may only load index maps that are square.");
+                return;
+            }
+
+            Texture2D output = DeconstructIndexMapTexture(indexMap, out var drawnCells);
+
+            if (output == null) return;
+
+            this.drawnCells = drawnCells;
+            Debug.Log($"drawnCells: {drawnCells.Count}");
+
+            if (output.width != drawImageSize || output.height != drawImageSize)
+                drawImageSize = output.width;
+
+            drawTexture = output;
             drawImage.image = drawTexture;
 
             nameField.SetValueWithoutNotify(evt.newValue.name);
 
             OnDrawTextureResize?.Invoke(drawImageSize);
         });
-
-        // disabled for now, needs to resize appropriately, then convert back to being a texture
-        drawTextureLoadField.SetEnabled(false); 
 
         return drawTextureLoadField;
     }
@@ -161,11 +184,12 @@ public partial class TilemapPainterEditor {
     }
 
     private void ResizeDrawTexture(int newDrawImageSize, VisualElement panel, VisualElement viewport, VisualElement contentArea, 
-                                   bool generateTexture = false) {
+                                   IntegerField drawTextureSizeField, bool generateTexture = false) {
         if (generateTexture && drawImageSize != newDrawImageSize)
             drawTexture = CreateDrawTexture();
 
         drawImageSize = newDrawImageSize;
+        drawTextureSizeField.SetValueWithoutNotify(newDrawImageSize);
 
         panel.style.width = new Length(drawImageSize + 10, LengthUnit.Pixel);
         viewport.style.width = new Length(drawImageSize, LengthUnit.Pixel);
@@ -208,7 +232,7 @@ public partial class TilemapPainterEditor {
                 drawnCells.Remove(cell);
 
             drawnCells.Add(cell, selectedAtlasCell.y * 
-                                    Mathf.CeilToInt(atlasImageSize / (float) atlasGridSize) + 
+                                    Mathf.CeilToInt(atlasTexture.width / (float) atlasGridSize) + 
                                     selectedAtlasCell.x);
         }
     }
@@ -233,10 +257,18 @@ public partial class TilemapPainterEditor {
         int height = drawTexture.height;
         Vector2Int topLeft = GetCellTopLeft(width, height, cell);
 
-        drawTexture.SetPixels32(topLeft.x, // left
-                                topLeft.y - (atlasGridSize - 1), // bottom
-                                atlasGridSize, 
-                                atlasGridSize, 
+        int drawX = topLeft.x;
+        int drawY = Mathf.Clamp(topLeft.y - (atlasGridSize - 1), 0, height);
+        int sizeX = atlasGridSize;
+        int sizeY = atlasGridSize;
+
+        if (width - drawX < sizeX) sizeX = width - drawX;
+        if (height - drawY < sizeY) sizeY = height - drawY;
+
+        drawTexture.SetPixels32(drawX, // left
+                                drawY, // bottom
+                                sizeX, 
+                                sizeY, 
                                 atlasPixels);
         drawTexture.Apply(false, false);
         Repaint();
@@ -266,20 +298,88 @@ public partial class TilemapPainterEditor {
 
         for (int y = 0; y < cellsY; ++y)
             for (int x = 0; x < cellsX; ++x) {
-				drawnCells.TryGetValue(new Vector2Int(x, y), out int atlasId);
+				bool isDrawn = drawnCells.TryGetValue(new Vector2Int(x, y), out int atlasId);
 
 				byte r = (byte)(atlasId & 0xFF); // low byte
                 byte g = (byte)((atlasId >> 8) & 0xFF); // high byte
 
                 // flip Y so UV 0,0 = bottom-left like the shader
                 int pixel = (cellsY - 1 - y) * cellsX + x;
-                pixels[pixel] = new Color32(r, g, 0, 255);
+                pixels[pixel] = new Color32(r, g, 0, (byte) (isDrawn ? 255 : 0));
             }
 
         indexMapTexture.SetPixels32(pixels);
         indexMapTexture.Apply();
 
         return indexMapTexture;
+    }
+
+    private Texture2D DeconstructIndexMapTexture(Texture2D indexMap, out Dictionary<Vector2Int, int> drawnCells) {
+        drawnCells = new Dictionary<Vector2Int, int>();
+
+        if (!atlasTexture) {
+            Debug.LogError("No atlas loaded, cannot deconstruct index map.");
+            return null;
+        }
+
+        int width = indexMap.width;
+        int height = indexMap.height;
+        int outputWidth = width * atlasGridSize;
+        int outputHeight = height * atlasGridSize;
+
+        Texture2D output = new Texture2D(outputWidth, outputHeight, TextureFormat.RGBA32, false) {
+            filterMode = FilterMode.Point,
+            wrapMode = TextureWrapMode.Clamp
+        };
+
+        Color32[] outputPixels = new Color32[outputWidth * outputHeight];
+        Color emptyColor = new Color32(176, 176, 176, 255);
+
+        for (int i = 0; i < outputPixels.Length; ++i)
+            outputPixels[i] = emptyColor;
+
+        int atlasCellsX = Mathf.CeilToInt(atlasTexture.width / (float) atlasGridSize);
+        Color32[] indexPixels = indexMap.GetPixels32();
+
+        for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++) {
+                int pixel = (height - 1 - y) * width + x;
+                Color32 pack = indexPixels[pixel];
+
+                int atlasId = (pack.g << 8) | pack.r;
+                Vector2Int atlasCell = new Vector2Int(atlasId % atlasCellsX, atlasId / atlasCellsX);
+                Color32[] cellPixels = GetAtlasCellContents(atlasCell);
+
+                if (cellPixels.Length == 0) continue;
+
+                int destCellY = height - 1 - y;
+
+                bool isDrawn = false;
+                for (int iy = 0; iy < atlasGridSize; iy++)
+                    for (int ix = 0; ix < atlasGridSize; ix++) {
+                        int destX = x * atlasGridSize + ix;
+                        int destY = destCellY * atlasGridSize + iy;
+                        int destPixel = destY * outputWidth + destX;
+                        int sourcePixel = iy * atlasGridSize + ix;
+
+                        Color32 source = cellPixels[sourcePixel];
+                        
+                        if (source.a == 255) {
+                            outputPixels[destPixel] = cellPixels[sourcePixel];
+                            isDrawn = true;
+                        }
+                    }
+
+                if (isDrawn) {
+                    Vector2Int outputCell = new Vector2Int(x, y);
+                    drawnCells.Add(outputCell, atlasId);
+                }
+            }
+
+        output.SetPixels32(outputPixels);
+        output.Apply(false, false);
+
+        return output;
     }
 
     private void SaveIndexMapTextureAsFile(string fileName, Texture2D indexMapTexture) {
@@ -297,6 +397,7 @@ public partial class TilemapPainterEditor {
             importer.filterMode = FilterMode.Point;
             importer.mipmapEnabled = false;
             importer.textureCompression = TextureImporterCompression.Uncompressed; 
+            importer.isReadable = true;
             importer.SaveAndReimport();
         }
     }
