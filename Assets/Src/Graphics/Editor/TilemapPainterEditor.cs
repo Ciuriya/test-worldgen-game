@@ -6,7 +6,13 @@ using UnityEngine.UIElements;
 
 public partial class TilemapPainterEditor : EditorWindow {
 
+    private enum Tools {
+        Brush,
+        Erase
+    }
+
     public static string STYLESHEET_PATH = "Assets/Art/USS/Editor/TilemapPainterEditorStyleSheet.uss";
+    public static string TOOL_ICON_PATH = "Assets/Art/Icons/";
 
     [MenuItem("Custom/Tilemap Painter")]
     public new static void Show() {
@@ -43,6 +49,16 @@ public partial class TilemapPainterEditor : EditorWindow {
 
         var dragLine = mainPanel.Q<VisualElement>("unity-dragline");
         if (dragLine != null) dragLine.pickingMode = PickingMode.Ignore;
+    }
+
+    private VisualElement CreateSpacer() {
+        var spacer = new VisualElement {
+            name = "Spacer"
+        };
+
+        spacer.AddToClassList("spacer");
+
+        return spacer;
     }
 }
 

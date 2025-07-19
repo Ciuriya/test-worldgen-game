@@ -8,9 +8,11 @@ using UnityEngine.UIElements;
 public class ImageControlHandler : VEControlHandler {
 
     public event Action<Vector3> OnClick;
+    public event Action<Vector3> OnDragClick;
 
     private const float ZOOM_STEP = 0.1f;
     private float lastLeftClickTime = 0.0f;
+    private float lastDragClickTime = 0.0f;
 
 	public ImageControlHandler(VisualElement element) : base(element) { }
 
@@ -42,6 +44,11 @@ public class ImageControlHandler : VEControlHandler {
             );
 
             ControlledElement.transform.position = newPos;
+        }
+
+        if (IsLeftClicking && EditorApplication.timeSinceStartup - lastDragClickTime > 0.05f) {
+            OnDragClick?.Invoke(evt.localPosition);
+            lastDragClickTime = (float) EditorApplication.timeSinceStartup;
         }
 	}
 

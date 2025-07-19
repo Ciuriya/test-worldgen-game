@@ -10,10 +10,10 @@ using UnityEngine.UIElements;
 
 public partial class TilemapPainterEditor {
 
-    // todo: add eraser
     private int drawImageSize = 512;
     private Texture2D drawTexture = null;
     private Dictionary<Vector2Int, int> drawnCells;
+    private Vector2Int lastCellDrawnTo;
     private const string saveFolder = "Assets/Art/IndexMaps";
     private VisualElement drawPanel;
     private event Action<int> OnDrawTextureResize;
@@ -39,7 +39,6 @@ public partial class TilemapPainterEditor {
         drawImageViewport.Add(drawImageContentArea);
 
         drawPanel.Add(drawImageViewport);
-
         atlasPanel.Add(drawTextureSizeField);
         atlasPanel.Add(drawTextureNameField);
         atlasPanel.Add(drawTextureLoadField);
@@ -67,7 +66,8 @@ public partial class TilemapPainterEditor {
         };
 
         var imageHandler = new ImageControlHandler(drawImageContentArea);
-        imageHandler.OnClick += (pos) => OnDrawClick(pos, drawImage);
+        imageHandler.OnClick += (pos) => OnDrawClick(false, pos, drawImage);
+        imageHandler.OnDragClick += (pos) => OnDrawClick(true, pos, drawImage);
 
         UpdateContentAreaSize(viewport, drawImageContentArea, drawTexture);
 
@@ -75,12 +75,8 @@ public partial class TilemapPainterEditor {
     }
 
     private Image CreateDrawImage() {
-        if (!drawTexture) {
-            drawTexture = new Texture2D(drawImageSize, drawImageSize, TextureFormat.RGBA32, false) {
-                filterMode = FilterMode.Point,
-                wrapMode = TextureWrapMode.Clamp
-            };
-        } 
+        if (!drawTexture)
+            drawTexture = CreateDrawTexture();
 
         var drawTextureImage = new Image {
             name = "Draw Texture Image",
@@ -88,6 +84,22 @@ public partial class TilemapPainterEditor {
         };
 
         return drawTextureImage;
+    }
+
+    private Button CreateDrawImageClearButton() {
+        var drawImageClearButton = new Button {
+            name = "Draw Image Clear Button",
+            text = "Clear"
+        };
+
+        drawImageClearButton.RegisterCallback<ClickEvent>((evt) => {
+            ClearTexture(drawTexture);
+            drawnCells.Clear();
+        });
+
+        drawImageClearButton.AddToClassList("draw-image-clear-button");
+
+        return drawImageClearButton;
     }
 
     private IntegerField CreateDrawTextureSizeField() {
@@ -121,13 +133,16 @@ public partial class TilemapPainterEditor {
         };
         
         drawTextureLoadField.RegisterValueChangedCallback((evt) => {
-            drawTexture = evt.newValue is Texture2D text ? text : new Texture2D(drawImageSize, drawImageSize);
+            drawTexture = evt.newValue is Texture2D text ? text : CreateDrawTexture();
             drawImage.image = drawTexture;
 
             nameField.SetValueWithoutNotify(evt.newValue.name);
 
-            OnDrawTextureResize?.Invoke(drawTexture.width > drawTexture.height ? drawTexture.width : drawTexture.height);
+            OnDrawTextureResize?.Invoke(drawImageSize);
         });
+
+        // disabled for now, needs to resize appropriately, then convert back to being a texture
+        drawTextureLoadField.SetEnabled(false); 
 
         return drawTextureLoadField;
     }
@@ -147,12 +162,8 @@ public partial class TilemapPainterEditor {
 
     private void ResizeDrawTexture(int newDrawImageSize, VisualElement panel, VisualElement viewport, VisualElement contentArea, 
                                    bool generateTexture = false) {
-        if (generateTexture && drawImageSize != newDrawImageSize) {
-            drawTexture = new Texture2D(drawImageSize, drawImageSize, TextureFormat.RGBA32, false) {
-                filterMode = FilterMode.Point,
-                wrapMode = TextureWrapMode.Clamp
-            };
-        }
+        if (generateTexture && drawImageSize != newDrawImageSize)
+            drawTexture = CreateDrawTexture();
 
         drawImageSize = newDrawImageSize;
 
@@ -163,49 +174,72 @@ public partial class TilemapPainterEditor {
         UpdateContentAreaSize(viewport, contentArea, atlasTexture);
     }
 
-    private void OnDrawClick(Vector2 localPos, Image drawImage) {
-        if (hasSelectedAtlasCell) {
-            Color32[] pixels = GetAtlasCellContents(selectedAtlasCell);
+    private void OnDrawClick(bool isDragClick, Vector2 localPos, Image drawImage) {
+        Vector2 imageActualSize = drawImage.layout.size;
+        Vector2 scale = new Vector2(drawTexture.width / imageActualSize.x,
+                                    drawTexture.height / imageActualSize.y);
+        Vector2Int cell = new Vector2Int(Mathf.FloorToInt(localPos.x * scale.x / atlasGridSize),
+                                         Mathf.FloorToInt(localPos.y * scale.y / atlasGridSize));
 
-            if (pixels.Length > 0) {
-                Vector2 imageActualSize = drawImage.layout.size;
-                Vector2 scale = new Vector2(drawTexture.width / imageActualSize.x,
-                                            drawTexture.height / imageActualSize.y);
-                Vector2Int cell = new Vector2Int(Mathf.FloorToInt(localPos.x * scale.x / atlasGridSize),
-                                                 Mathf.FloorToInt(localPos.y * scale.y / atlasGridSize));
+        if (isDragClick && lastCellDrawnTo.Equals(cell)) return;
 
-                DrawAtlasCellOntoDrawTexture(cell, pixels);
-
-                if (drawnCells.ContainsKey(cell))
-                    drawnCells.Remove(cell);
-
-                drawnCells.Add(cell, selectedAtlasCell.y * 
-                                     Mathf.CeilToInt(atlasImageSize / (float) atlasGridSize) + 
-                                     selectedAtlasCell.x);
-            }
+        switch (currentTool) {
+            case Tools.Brush:
+                OnBrushClick(cell);
+                break;
+            case Tools.Erase:
+                OnEraseClick(cell);
+                break;
+            default: break;
         }
     }
 
-    private void DrawAtlasCellOntoDrawTexture(Vector2Int cell, Color32[] atlasPixels) {
+    private void OnBrushClick(Vector2Int cell) {
+        if (hasSelectedAtlasCell) {
+            Color32[] pixels = GetAtlasCellContents(selectedAtlasCell);
+
+            if (pixels.Length == 0) return;
+
+            DrawPixelsOntoDrawTexture(cell, pixels);
+
+            lastCellDrawnTo = cell;
+
+            if (drawnCells.ContainsKey(cell))
+                drawnCells.Remove(cell);
+
+            drawnCells.Add(cell, selectedAtlasCell.y * 
+                                    Mathf.CeilToInt(atlasImageSize / (float) atlasGridSize) + 
+                                    selectedAtlasCell.x);
+        }
+    }
+
+    private void OnEraseClick(Vector2Int cell) {
+        Color32[] emptyPixels = new Color32[atlasGridSize * atlasGridSize];
+        Color32 blankColor = new Color32(176, 176, 176, 255);
+
+        for (int i = 0; i < emptyPixels.Length; ++i)
+            emptyPixels[i] = blankColor;
+
+        DrawPixelsOntoDrawTexture(cell, emptyPixels);
+
+        lastCellDrawnTo = cell;
+
+        if (drawnCells.ContainsKey(cell))
+            drawnCells.Remove(cell);
+    }
+
+    private void DrawPixelsOntoDrawTexture(Vector2Int cell, Color32[] atlasPixels) {
         int width = drawTexture.width;
         int height = drawTexture.height;
         Vector2Int topLeft = GetCellTopLeft(width, height, cell);
-        Color32[] pixels = drawTexture.GetPixels32();
 
-        for (int x = 0; x < atlasGridSize; x++)
-            for (int y = 0; y < atlasGridSize; y++) {
-                int destX = topLeft.x + x;
-                int destY = topLeft.y - y;
-                int destPixel = destY * width + destX;
-                int sourcePixel = (atlasGridSize - 1 - y) * atlasGridSize + x;
-
-                if (destPixel >= 0 && destPixel < pixels.Length && 
-                    sourcePixel >= 0 && sourcePixel < atlasPixels.Length)
-                    pixels[destPixel] = atlasPixels[sourcePixel];
-            }
-
-        drawTexture.SetPixels32(pixels);
-        drawTexture.Apply();
+        drawTexture.SetPixels32(topLeft.x, // left
+                                topLeft.y - (atlasGridSize - 1), // bottom
+                                atlasGridSize, 
+                                atlasGridSize, 
+                                atlasPixels);
+        drawTexture.Apply(false, false);
+        Repaint();
     }
 
     private void SaveDrawTextureAsFile(string fileName) {
@@ -265,6 +299,30 @@ public partial class TilemapPainterEditor {
             importer.textureCompression = TextureImporterCompression.Uncompressed; 
             importer.SaveAndReimport();
         }
+    }
+
+    private Texture2D CreateDrawTexture() {
+        Texture2D drawTexture = new Texture2D(drawImageSize, drawImageSize, TextureFormat.RGBA32, false) {
+            filterMode = FilterMode.Point,
+            wrapMode = TextureWrapMode.Clamp,
+            alphaIsTransparency = true
+        };
+
+        ClearTexture(drawTexture);
+
+        return drawTexture;
+    }
+
+    private void ClearTexture(Texture2D texture) {
+        // could potentially be cached
+        Color32[] colors = new Color32[texture.width * texture.height];
+        Color emptyColor = new Color32(176, 176, 176, 255);
+
+        for (int i = 0; i < colors.Length; ++i)
+            colors[i] = emptyColor;
+
+        texture.SetPixels32(colors);
+        texture.Apply(false, false);
     }
 }
 

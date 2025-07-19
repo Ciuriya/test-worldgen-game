@@ -1,5 +1,7 @@
 #if UNITY_EDITOR // in case
 
+using System.Collections.Generic;
+using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -14,6 +16,9 @@ public partial class TilemapPainterEditor {
     private Vector2Int selectedAtlasCell;
     private VisualElement atlasPanel;
 
+    private Tools currentTool;
+    private List<Button> toolButtons;
+
     private VisualElement CreateAtlasPanel() {
         atlasPanel = new VisualElement {
             name = "Atlas Panel"
@@ -25,6 +30,13 @@ public partial class TilemapPainterEditor {
         var atlasImageContentArea = CreateAtlasImageContentArea(atlasImageViewport, atlasImage);
         var atlasObjectField = CreateSpriteAtlasField(atlasImageViewport, atlasImage, atlasImageGrid);
         var atlasGridSizeField = CreateGridSizeField(atlasImageGrid);
+        var toolAreaElement = CreateToolAreaElement();
+        var toolBrushButton = CreateToolBrushButton();
+        var toolEraseButton = CreateToolEraseButton();
+        var drawImageClearButton = CreateDrawImageClearButton();
+
+        toolAreaElement.Add(toolBrushButton);
+        toolAreaElement.Add(toolEraseButton);
         
         atlasImageContentArea.Add(atlasImage);
         atlasImageContentArea.Add(atlasImageGrid);
@@ -32,6 +44,9 @@ public partial class TilemapPainterEditor {
         atlasImageViewport.Add(atlasImageContentArea);
 
         atlasPanel.Add(atlasImageViewport);
+        atlasPanel.Add(toolAreaElement);
+        atlasPanel.Add(drawImageClearButton);
+        atlasPanel.Add(CreateSpacer());
         atlasPanel.Add(atlasObjectField);
         atlasPanel.Add(atlasGridSizeField);
 
@@ -126,6 +141,69 @@ public partial class TilemapPainterEditor {
         return atlasGridSizeField;
     }
 
+    private VisualElement CreateToolAreaElement() {
+        toolButtons = new List<Button>();
+
+        var toolAreaElement = new VisualElement {
+            name = "Tool Area"
+        };
+
+        toolAreaElement.AddToClassList("tool-area");
+
+        return toolAreaElement;
+    }
+
+    private Button CreateToolBrushButton() {
+        Texture2D icon = AssetDatabase.LoadAssetAtPath<Texture2D>(TOOL_ICON_PATH + "brush.png");
+
+        if (!icon) icon = new Texture2D(16, 16);
+
+        var toolBrushButton = new Button {
+            name = "Tool Brush Button",
+            iconImage = icon
+        };
+
+        toolBrushButton.RegisterCallback<ClickEvent>((evt) => SelectTool(Tools.Brush, toolBrushButton));
+
+        toolButtons.Add(toolBrushButton);
+
+        SelectTool(Tools.Brush, toolBrushButton); // default selection
+
+        return toolBrushButton;
+    }
+
+    private Button CreateToolEraseButton() {
+        Texture2D icon = AssetDatabase.LoadAssetAtPath<Texture2D>(TOOL_ICON_PATH + "eraser.png");
+
+        if (!icon) icon = new Texture2D(16, 16);
+
+        var toolEraseButton = new Button {
+            name = "Tool Erase Button",
+            iconImage = icon
+        };
+
+        toolEraseButton.RegisterCallback<ClickEvent>((evt) => SelectTool(Tools.Erase, toolEraseButton));
+
+        toolButtons.Add(toolEraseButton);
+
+        return toolEraseButton;
+    }
+
+    private void SelectTool(Tools tool, Button toolButton) {
+        UnselectAllTools();
+        toolButton.AddToClassList("selected-tool");
+        toolButton.SetEnabled(false);
+
+        currentTool = tool;
+    }
+
+    private void UnselectAllTools() {
+        foreach (Button tool in toolButtons) {
+            tool.RemoveFromClassList("selected-tool");
+            tool.SetEnabled(true);
+        }
+    }
+
     private void ResizeAtlasZone(VisualElement panel, VisualElement viewport, VisualElement contentArea) {
         panel.style.width = new Length(atlasImageSize + 10, LengthUnit.Pixel);
         viewport.style.width = new Length(atlasImageSize, LengthUnit.Pixel);
@@ -165,7 +243,7 @@ public partial class TilemapPainterEditor {
         int width = atlasGridTexture.width;
         int height = atlasGridTexture.height;
         Color32[] pixels = new Color32[width * height];
-        Color32 lineColor = new Color32(0, 0, 0, 50);
+        Color32 lineColor = new Color32(0, 0, 0, 100);
 
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++) {
@@ -176,7 +254,8 @@ public partial class TilemapPainterEditor {
             }
 
         atlasGridTexture.SetPixels32(pixels);
-        atlasGridTexture.Apply();
+        atlasGridTexture.Apply(false, false);
+        Repaint();
     }
 
     private void OnAtlasGridSelect(Vector2 localPos, Image atlasImage) {
@@ -217,8 +296,8 @@ public partial class TilemapPainterEditor {
             return;
         }
 
-        Color32 selectedColor = new Color32(0, 255, 0, 50);
-        Color32 lineColor = new Color32(0, 0, 0, 50);
+        Color32 selectedColor = new Color32(0, 255, 0, 100);
+        Color32 lineColor = new Color32(0, 0, 0, 100);
 
         for (int x = topLeft.x; x <= Mathf.Clamp(topLeft.x + atlasGridSize, 0, width); x++)
             for (int y = topLeft.y; y >= Mathf.Clamp(topLeft.y - atlasGridSize, 0, height); y--) {
@@ -234,7 +313,8 @@ public partial class TilemapPainterEditor {
             }
 
         atlasGridTexture.SetPixels32(pixels);
-        atlasGridTexture.Apply();
+        atlasGridTexture.Apply(false, false);
+        Repaint();
     }
 
     private Vector2Int GetCellTopLeft(int width, int height, Vector2Int cell, bool useGridTopLeft = false) {
