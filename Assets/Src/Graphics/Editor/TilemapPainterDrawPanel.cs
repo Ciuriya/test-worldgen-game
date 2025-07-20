@@ -154,7 +154,6 @@ public partial class TilemapPainterEditor {
             if (output == null) return;
 
             this.drawnCells = drawnCells;
-            Debug.Log($"drawnCells: {drawnCells.Count}");
 
             if (output.width != drawImageSize || output.height != drawImageSize)
                 drawImageSize = output.width;
@@ -165,6 +164,8 @@ public partial class TilemapPainterEditor {
             nameField.SetValueWithoutNotify(evt.newValue.name);
 
             OnDrawTextureResize?.Invoke(drawImageSize);
+
+            Debug.Log($"Loaded Index Map: {indexMap.name}");
         });
 
         return drawTextureLoadField;
@@ -195,7 +196,8 @@ public partial class TilemapPainterEditor {
         viewport.style.width = new Length(drawImageSize, LengthUnit.Pixel);
         viewport.style.height = new Length(drawImageSize, LengthUnit.Pixel);
 
-        UpdateContentAreaSize(viewport, contentArea, atlasTexture);
+        UpdateContentAreaSize(viewport, contentArea, drawTexture);
+        Repaint();
     }
 
     private void OnDrawClick(bool isDragClick, Vector2 localPos, Image drawImage) {
@@ -329,7 +331,8 @@ public partial class TilemapPainterEditor {
 
         Texture2D output = new Texture2D(outputWidth, outputHeight, TextureFormat.RGBA32, false) {
             filterMode = FilterMode.Point,
-            wrapMode = TextureWrapMode.Clamp
+            wrapMode = TextureWrapMode.Clamp,
+            alphaIsTransparency = true
         };
 
         Color32[] outputPixels = new Color32[outputWidth * outputHeight];
