@@ -272,7 +272,6 @@ public class WorldMapExtruder : Extruder {
     }
 
     private half2 CalculateUVs(Vector3 position, Vector3 cornerOne, bool isWall) {
-        // could be changed to allow varying tile sizes (per room? per face?)
         float tileSize = World.Data.TileSize;
 
         // remove the y and find the distance between corner and position, aka edge position
