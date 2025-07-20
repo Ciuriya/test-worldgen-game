@@ -2,23 +2,49 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using Unity.Collections;
 using Unity.Mathematics;
-using Random = UnityEngine.Random;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
 public class WorldMapExtruder : Extruder {
 
+    private class ZoneRoomWrapper {
+        public Room Room;
+        public IndexMapWrapper WallIndexMap;
+        public IndexMapWrapper FloorIndexMap;
+    }
+
     [Tooltip("The world to extrude")]
     public World World;
+
+    private Dictionary<Zone, ZoneRoomWrapper> zoneRoomWrappers;
 
     public override void Extrude() {
         if (!CanExtrude()) return;
 
         List<(Corner, Corner)> edgesGenerated = new List<(Corner, Corner)>();
 
+        SetupRoomWrappers();
+
         foreach (Zone zone in World.Zones)
             CreateZoneMesh(zone, transform, ref edgesGenerated);
+    }
+
+    // this is needed to ensure consistency
+    // when we generate an edge, we generate it on both sides at once
+    // this means we need both zones at once, even before the other zone is processed here
+    // so we need to pre-emptively set which index maps the zones will be using
+    // otherwise we would be re-generating some at times and causing weirdness
+    private void SetupRoomWrappers() {
+        zoneRoomWrappers = new Dictionary<Zone, ZoneRoomWrapper>();
+
+        foreach (Zone zone in World.Zones)
+            if (zone.Room != null)
+                zoneRoomWrappers.Add(zone, new ZoneRoomWrapper() {
+                    Room = zone.Room,
+                    WallIndexMap = zone.Room.PickWallsRandomly ? null : zone.Room.GetWallIndexMap(),
+                    FloorIndexMap = zone.Room.GetFloorIndexMap()
+                });
     }
 
     private void CreateZoneMesh(Zone zone, Transform parent, ref List<(Corner, Corner)> edgesGenerated) {
@@ -50,8 +76,10 @@ public class WorldMapExtruder : Extruder {
             vertices[i] = new Vector3(points[i].x, points[i].y, ExtrusionDepth);
         }
 
+        var zoneRoomWrapper = zoneRoomWrappers.ContainsKey(zone) ? zoneRoomWrappers[zone] : null;
+
         return CreateMesh(zone.Center, parent, zone.Room ? zone.Room.name : "No Zone", 
-                          points, vertices, new Room[] { zone.Room });
+                          points, vertices, new ZoneRoomWrapper[] { zoneRoomWrapper });
     }
 
     private GameObject CreateEdgeMesh(Zone zone, Zone neighbor, Transform parent, Vector2 cornerOne, Vector2 cornerTwo) {
@@ -64,16 +92,21 @@ public class WorldMapExtruder : Extruder {
 
         Vector3 center = (cornerOne + cornerTwo) / 2f;
 
+        var zoneRoomWrapper = zoneRoomWrappers.ContainsKey(zone) ? zoneRoomWrappers[zone] : null;
+        var neighborRoomWrapper = neighbor != null ? 
+                                    (zoneRoomWrappers.ContainsKey(neighbor) ? zoneRoomWrappers[neighbor] : null) 
+                                    : null;
+
         return CreateMesh(center, 
                           parent, (zone.Room ? zone.Room.name : "No Zone") + " Edge", 
                           new Vector2[] { cornerOne, cornerTwo }, positions, 
-                          new Room[] { zone.Room, neighbor?.Room }, true, true,
+                          new ZoneRoomWrapper[] { zoneRoomWrapper, neighborRoomWrapper }, true, true,
                           new ushort[] { 1, 2, 0, 3, 2, 1 },
                           new ushort[] { 0, 2, 1, 1, 2, 3 });
     }
 
     private GameObject CreateMesh(Vector3 center, Transform parent, string name, Vector2[] points, Vector3[] positions,
-                                  Room[] rooms, bool isWall = false, bool renderOneFacePerSubmesh = false,
+                                  ZoneRoomWrapper[] rooms, bool isWall = false, bool renderOneFacePerSubmesh = false,
                                   params ushort[][] trianglesParam) {
         ushort[] allTriangles;
 
@@ -143,14 +176,13 @@ public class WorldMapExtruder : Extruder {
         List<Material> materials = new List<Material>();
 
         // create materials
-        if (meshData.subMeshCount == 1) materials.Add(Instantiate(rooms[0]?.Material ?? MeshDefaultMaterial));
+        if (meshData.subMeshCount == 1) materials.Add(Instantiate(rooms[0]?.Room.Material ?? MeshDefaultMaterial));
         else {
             for (int i = 0; i < meshData.subMeshCount; ++i) {
-                Room room = rooms.Length > i ? rooms[i] : null;
-                materials.Add(Instantiate(room?.Material ?? MeshDefaultMaterial));
+                ZoneRoomWrapper roomWrapper = rooms.Length > i ? rooms[i] : null;
+                materials.Add(Instantiate(roomWrapper?.Room.Material ?? MeshDefaultMaterial));
             }
         }
-
         // setup sub-meshes
         int triangleIndex = 0;
         for (int i = 0; i < meshData.subMeshCount; ++i) {
@@ -161,17 +193,24 @@ public class WorldMapExtruder : Extruder {
             triangleIndex += subMeshTriangles.Length;
 
             // setup mat
-            Room room = rooms.Length > i ? rooms[i] : null;
+            ZoneRoomWrapper room = rooms.Length > i ? rooms[i] : null;
             Material mat = materials[i];
 
-            if (room != null && room.AtlasTexture && room.IndexMapTexture && room.AtlasGridSize > 0) {
-                mat.SetTexture("_MainTex", room.AtlasTexture);
-                mat.SetTexture("_IndexTex", room.IndexMapTexture);
+            if (room != null 
+                && (isWall || room.FloorIndexMap != null) 
+                && (room.WallIndexMap != null || room.Room.PickWallsRandomly)) {
+                    IndexMapWrapper map = null;
 
-                int cols = Mathf.CeilToInt(room.AtlasTexture.width / (float) room.AtlasGridSize);
-                int rows = Mathf.CeilToInt(room.AtlasTexture.height / (float) room.AtlasGridSize);
+                    if (isWall) map = room.WallIndexMap ?? room.Room.GetWallIndexMap();
+                    else map = room.FloorIndexMap;
 
-                mat.SetVector("_AtlasDims", new Vector2(cols, rows));
+                    mat.SetTexture("_MainTex", map.AtlasTexture);
+                    mat.SetTexture("_IndexTex", map.IndexMapTexture);
+
+                    int cols = Mathf.CeilToInt(map.AtlasTexture.width / (float) map.AtlasGridSize);
+                    int rows = Mathf.CeilToInt(map.AtlasTexture.height / (float) map.AtlasGridSize);
+
+                    mat.SetVector("_AtlasDims", new Vector2(cols, rows));
             }
 
             if (renderOneFacePerSubmesh) 
