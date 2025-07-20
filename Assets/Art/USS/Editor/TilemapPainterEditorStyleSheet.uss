@@ -54,6 +54,7 @@
 }
 
 .draw-panel .draw-image-viewport {
+    position: absolute;
     margin: 4px;
     justify-content: center;
     overflow: hidden;
