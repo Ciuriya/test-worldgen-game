@@ -258,14 +258,12 @@ public partial class TilemapPainterEditor {
         int width = drawTexture.width;
         int height = drawTexture.height;
         Vector2Int topLeft = GetCellTopLeft(width, height, cell);
+        topLeft.x -= 1;
 
         int drawX = topLeft.x;
         int drawY = Mathf.Clamp(topLeft.y - (atlasGridSize - 1), 0, height);
         int sizeX = atlasGridSize;
         int sizeY = atlasGridSize;
-
-        if (width - drawX < sizeX) sizeX = width - drawX;
-        if (height - drawY < sizeY) sizeY = height - drawY;
 
         drawTexture.SetPixels32(drawX, // left
                                 drawY, // bottom
