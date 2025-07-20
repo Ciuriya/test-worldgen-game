@@ -14,8 +14,6 @@ public class WorldGeneratorData : ScriptableObject {
 
     public Vector2 MapSize; 
 
-    [Range(0, 5)] public float TileSize = 1f;
-
     [Range(1, 100)] public int LineThickness = 1;
 
     [Tooltip("The material used to represent zones")]

@@ -6,6 +6,7 @@ Shader "Custom/Tiling2D_URP"
         _MainTex("Sprite Atlas", 2D) = "white" {}
         _IndexTex("Index Map", 2D) = "white" {}
         _AtlasDims("Atlas Dims (cols, rows)", Vector) = (8,8,0,0)
+        _UV("UV Set (TEXCOORD0, TEXCOORD1, etc.)", Integer) = 0
         _Cull("Cull Mode", Float) = 2 // 0: off 1: front 2: back
     }
 
@@ -31,6 +32,7 @@ Shader "Custom/Tiling2D_URP"
                 float4 _Color;
                 float4 _MainTex_ST;
                 float4 _AtlasDims; // xy = cols, rows
+                int _UV; // which UV set to use
             CBUFFER_END
 
             TEXTURE2D(_MainTex);       
@@ -43,12 +45,14 @@ Shader "Custom/Tiling2D_URP"
             {
                 float3 positionOS : POSITION;
                 float2 uv         : TEXCOORD0;
+                float2 uv2        : TEXCOORD1;
             };
 
             struct Varyings
             {
                 float4 positionHCS : SV_POSITION;
                 float2 uv          : TEXCOORD0;
+                float2 uv2         : TEXCOORD1;
             };
 
             Varyings vert (Attributes IN)
@@ -56,12 +60,13 @@ Shader "Custom/Tiling2D_URP"
                 Varyings OUT;
                 OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
                 // UVs are already scaled in the mesh so that 1 UV unit == 1 tile cell
-                OUT.uv = TRANSFORM_TEX(IN.uv, _MainTex);
+                OUT.uv = TRANSFORM_TEX(_UV == 0 ? IN.uv : IN.uv2, _MainTex);
                 return OUT;
             }
 
             half4 frag (Varyings IN) : SV_Target
             {
+                float2 uv = _UV == 0 ? IN.uv : IN.uv2;
                 float2 cell = floor(IN.uv);  // integer cell coordinate
                 float2 localUV = frac(IN.uv); // 0-1 inside the cell
 

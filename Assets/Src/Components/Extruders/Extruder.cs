@@ -109,13 +109,14 @@ public abstract class Extruder : MonoBehaviour {
 
     protected NativeArray<VertexAttributeDescriptor> GetVertexLayout() {
         NativeArray<VertexAttributeDescriptor> vertexAttributes = new NativeArray<VertexAttributeDescriptor>(
-            4, Allocator.Temp, NativeArrayOptions.UninitializedMemory
+            5, Allocator.Temp, NativeArrayOptions.UninitializedMemory
         );
 
         vertexAttributes[0] = new VertexAttributeDescriptor(dimension: 3);
         vertexAttributes[1] = new VertexAttributeDescriptor(VertexAttribute.Normal, dimension: 3);
         vertexAttributes[2] = new VertexAttributeDescriptor(VertexAttribute.Tangent, VertexAttributeFormat.Float16, dimension: 4);
         vertexAttributes[3] = new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float16, dimension: 2);
+        vertexAttributes[4] = new VertexAttributeDescriptor(VertexAttribute.TexCoord1, VertexAttributeFormat.Float16, dimension: 2);
 
         return vertexAttributes;
     }
@@ -167,5 +168,6 @@ public abstract class Extruder : MonoBehaviour {
         public float3 position, normal;
         public half4 tangent;
         public half2 texCoord0;
+        public half2 texCoord1;
     }
 }
