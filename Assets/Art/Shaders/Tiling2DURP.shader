@@ -6,7 +6,8 @@ Shader "Custom/Tiling2D_URP"
         _MainTex("Sprite Atlas", 2D) = "white" {}
         _IndexTex("Index Map", 2D) = "white" {}
         _AtlasDims("Atlas Dims (cols, rows)", Vector) = (8,8,0,0)
-        _UV("UV Set (TEXCOORD0, TEXCOORD1, etc.)", Integer) = 0
+        _IndexTex_TexelSize("Index Map Texel Size (1/w, 1/h)", Vector) = (0,0,0,0)
+        _UV("UV Set (TEXCOORD0, TEXCOORD1, etc.)", Float) = 0
         _Cull("Cull Mode", Float) = 2 // 0: off 1: front 2: back
     }
 
@@ -32,14 +33,15 @@ Shader "Custom/Tiling2D_URP"
                 float4 _Color;
                 float4 _MainTex_ST;
                 float4 _AtlasDims; // xy = cols, rows
-                int _UV; // which UV set to use
+                float4 _IndexTex_TexelSize;
+                float _UV; // which UV set to use
             CBUFFER_END
 
-            TEXTURE2D(_MainTex);       
-            SAMPLER(sampler_MainTex);
-            TEXTURE2D(_IndexTex);      
-            SAMPLER(sampler_IndexTex);
-            float4 _IndexTex_TexelSize; // auto-injected by Unity
+            Texture2D<float4> _MainTex;
+            SamplerState sampler_MainTex;
+
+            Texture2D<float4> _IndexTex;
+            SamplerState sampler_IndexTex;
 
             struct Attributes
             {
@@ -59,14 +61,17 @@ Shader "Custom/Tiling2D_URP"
             {
                 Varyings OUT;
                 OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
+
                 // UVs are already scaled in the mesh so that 1 UV unit == 1 tile cell
-                OUT.uv = TRANSFORM_TEX(_UV == 0 ? IN.uv : IN.uv2, _MainTex);
+                OUT.uv = TRANSFORM_TEX(_UV == 0.0 ? IN.uv : IN.uv2, _MainTex);
+                OUT.uv2 = IN.uv2;
+
                 return OUT;
             }
 
             half4 frag (Varyings IN) : SV_Target
             {
-                float2 uv = _UV == 0 ? IN.uv : IN.uv2;
+                float2 uv = _UV == 0.0 ? IN.uv : IN.uv2;
                 float2 cell = floor(IN.uv);  // integer cell coordinate
                 float2 localUV = frac(IN.uv); // 0-1 inside the cell
 
@@ -75,7 +80,7 @@ Shader "Custom/Tiling2D_URP"
                 
                 // the index is stored in red and green channels (0-1 range). 
                 // assume 0-255 mapping
-                half4 channels = SAMPLE_TEXTURE2D(_IndexTex, sampler_IndexTex, indexUV);
+                half4 channels = _IndexTex.Sample(sampler_IndexTex, indexUV);
                 float tileIndex = round(channels.r * 255.0 + channels.g * 255.0 * 256.0);
 
                 if (tileIndex == 0) return _Color;
@@ -90,7 +95,7 @@ Shader "Custom/Tiling2D_URP"
                 // so we flip y to fix that
                 float2 atlasUV = (float2(col, rows - 1.0 - row) + localUV) / _AtlasDims.xy;
 
-                return SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, atlasUV) * _Color;
+                return _MainTex.Sample(sampler_MainTex, atlasUV) * _Color;
             }
             ENDHLSL
         }

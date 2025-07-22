@@ -29,5 +29,5 @@ MonoBehaviour:
     DefaultColor: {r: 0, g: 0, b: 0, a: 0}
     DefaultTileSize: 1
     CenterPositionInPercent: {x: 50, y: 50}
-    TextureWrapMode: 0
+    TextureWrapMode: 2
   PickWallsRandomly: 0

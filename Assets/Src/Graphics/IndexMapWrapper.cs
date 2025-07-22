@@ -1,8 +1,15 @@
+using System;
 using MyBox;
 using UnityEngine;
 
 [System.Serializable]
 public class IndexMapWrapper {
+
+    public enum WrapMode {
+        Repeat,
+        NoRepeat,
+        Fit,
+    }
 
     [Tooltip("The atlas this index map takes from")]
     public Texture AtlasTexture;
@@ -24,10 +31,19 @@ public class IndexMapWrapper {
 
     [Tooltip("How should this texture wrap?")]
     public WrapMode TextureWrapMode;
+    
+    public Vector2 GetTileSize(bool isWall, Bounds bounds) {
+        switch (TextureWrapMode) {
+            case WrapMode.Fit:
+                return CalculateFitModeTileSize(isWall, bounds);
+            default: break;
+        }
 
-    public enum WrapMode {
-        Repeat,
-        NoRepeat,
-        Stretch,
+        return new Vector2(DefaultTileSize, DefaultTileSize);
+    }
+
+    private Vector2 CalculateFitModeTileSize(bool isWall, Bounds bounds) {
+        return new Vector2(bounds.size.x / IndexMapTexture.width,
+                           (isWall ? bounds.size.y : bounds.size.z) / IndexMapTexture.height);
     }
 }

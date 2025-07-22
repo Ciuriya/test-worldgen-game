@@ -8,15 +8,6 @@ using System.Linq;
 
 public class WorldMapExtruder : Extruder {
 
-    // todo: make it its own class
-    private class ZoneRoomWrapper {
-        public Room Room;
-        public IndexMapWrapper WallIndexMap;
-        public IndexMapWrapper FloorIndexMap;
-        // this will return the right wrap mode tile size, using params and all
-        public float GetTileSize(bool isWall) => isWall ? WallIndexMap.DefaultTileSize : FloorIndexMap.DefaultTileSize;
-    }
-
     [Tooltip("The world to extrude")]
     public World World;
 
@@ -156,6 +147,11 @@ public class WorldMapExtruder : Extruder {
             tangent = tangent
         };
 
+        Vector2 tileSize0 = rooms[0] != null ? rooms[0].GetIndexMap(isWall).GetTileSize(isWall, bounds) : Vector2.one;
+        Vector2 tileSize1 = isWall && rooms[1] != null ? 
+                                rooms[1].GetIndexMap(isWall).GetTileSize(isWall, bounds) : 
+                                Vector2.one;
+
         for (int i = 0; i < positions.Length; ++i) {
             vertex.position = positions[i];
 
@@ -164,11 +160,10 @@ public class WorldMapExtruder : Extruder {
             RotateVerticeToMatchParentRotation(ref pointOne);
             pointOne -= globalCoords;
 
-            vertex.texCoord0 = CalculateUVs(vertex.position, pointOne, isWall, 
-                                            rooms[0] == null ? 1 : rooms[0].GetTileSize(isWall));
+            vertex.texCoord0 = CalculateUVs(vertex.position, pointOne, isWall, tileSize0);
 
             if (isWall && rooms[1] != null) 
-                vertex.texCoord1 = CalculateUVs(vertex.position, pointOne, isWall, rooms[1].GetTileSize(isWall));
+                vertex.texCoord1 = CalculateUVs(vertex.position, pointOne, isWall, tileSize1);
 
             vertices[i] = vertex;
         }
@@ -215,12 +210,16 @@ public class WorldMapExtruder : Extruder {
 
                     mat.SetTexture("_MainTex", map.AtlasTexture);
                     mat.SetTexture("_IndexTex", map.IndexMapTexture);
+                    mat.SetVector("_IndexTex_TexelSize", new Vector4(1f / map.IndexMapTexture.width,
+                                                                     1f / map.IndexMapTexture.height,
+                                                                     map.IndexMapTexture.width,
+                                                                     map.IndexMapTexture.height));
 
                     int cols = Mathf.CeilToInt(map.AtlasTexture.width / (float) map.AtlasGridSize);
                     int rows = Mathf.CeilToInt(map.AtlasTexture.height / (float) map.AtlasGridSize);
 
                     mat.SetVector("_AtlasDims", new Vector2(cols, rows));
-                    mat.SetInteger("_UV", i);
+                    mat.SetFloat("_UV", i);
             }
 
             if (renderOneFacePerSubmesh) 
@@ -281,7 +280,7 @@ public class WorldMapExtruder : Extruder {
         tangent = new half4(new float4(tan3, 1f)); // −1 to flip
     }
 
-    private half2 CalculateUVs(Vector3 position, Vector3 cornerOne, bool isWall, float tileSize) {
+    private half2 CalculateUVs(Vector3 position, Vector3 cornerOne, bool isWall, Vector2 tileSize) {
         // remove the y and find the distance between corner and position, aka edge position
         float uValue = isWall ? 
                         Vector2.Distance(new Vector2(position.x, position.z), 
@@ -289,8 +288,8 @@ public class WorldMapExtruder : Extruder {
                         : position.x;
 
         return new half2(
-            new half(uValue / tileSize),
-            new half((isWall ? position.y : position.z) / tileSize)
+            new half(uValue / tileSize.x),
+            new half((isWall ? position.y : position.z) / tileSize.y)
         );
     }
 
