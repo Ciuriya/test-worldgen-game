@@ -73,7 +73,8 @@ public class WorldMapExtruder : Extruder {
         var zoneRoomWrapper = zoneRoomWrappers.ContainsKey(zone) ? zoneRoomWrappers[zone] : null;
 
         return CreateMesh(zone.Center, parent, zone.Room ? zone.Room.name : "No Zone", 
-                          points, vertices, new ZoneRoomWrapper[] { zoneRoomWrapper });
+                          points, vertices, new ZoneRoomWrapper[] { zoneRoomWrapper }, 
+                          new Vector3[] { zone.Center });
     }
 
     private GameObject CreateEdgeMesh(Zone zone, Zone neighbor, Transform parent, Vector2 cornerOne, Vector2 cornerTwo) {
@@ -94,14 +95,16 @@ public class WorldMapExtruder : Extruder {
         return CreateMesh(center, 
                           parent, (zone.Room ? zone.Room.name : "No Zone") + " Edge", 
                           new Vector2[] { cornerOne, cornerTwo }, positions, 
-                          new ZoneRoomWrapper[] { zoneRoomWrapper, neighborRoomWrapper }, true, true,
+                          new ZoneRoomWrapper[] { zoneRoomWrapper, neighborRoomWrapper },
+                          new Vector3[] { zone.Center, neighbor != null ? neighbor.Center : Vector3.zero },
+                          true, true,
                           new ushort[] { 1, 2, 0, 3, 2, 1 },
                           new ushort[] { 0, 2, 1, 1, 2, 3 });
     }
 
     private GameObject CreateMesh(Vector3 center, Transform parent, string name, Vector2[] points, Vector3[] positions,
-                                  ZoneRoomWrapper[] rooms, bool isWall = false, bool renderOneFacePerSubmesh = false,
-                                  params ushort[][] trianglesParam) {
+                                  ZoneRoomWrapper[] rooms, Vector3[] zoneCenters,
+                                  bool isWall = false, bool renderOneFacePerSubmesh = false, params ushort[][] trianglesParam) {
         ushort[] allTriangles;
 
         // generate tris if we don't have some explicitly set
@@ -147,23 +150,16 @@ public class WorldMapExtruder : Extruder {
             tangent = tangent
         };
 
-        Vector2 tileSize0 = rooms[0] != null ? rooms[0].GetIndexMap(isWall).GetTileSize(isWall, bounds) : Vector2.one;
-        Vector2 tileSize1 = isWall && rooms[1] != null ? 
-                                rooms[1].GetIndexMap(isWall).GetTileSize(isWall, bounds) : 
-                                Vector2.one;
+        CalculateRoomUVModifiers(isWall, points, rooms, zoneCenters, globalCoords, bounds, 
+                                 out Vector3 pointOne, out Vector3 pointTwo, out bool flipUV0, out bool flipUV1, 
+                                 out Vector2 tileSize0, out Vector2 tileSize1, out float3 uvOffset0, out float3 uvOffset1);
 
         for (int i = 0; i < positions.Length; ++i) {
             vertex.position = positions[i];
-
-            Vector3 pointOne = points[0];
-
-            RotateVerticeToMatchParentRotation(ref pointOne);
-            pointOne -= globalCoords;
-
-            vertex.texCoord0 = CalculateUVs(vertex.position, pointOne, isWall, tileSize0);
+            vertex.texCoord0 = CalculateUVs(vertex.position + uvOffset0, pointOne, pointTwo, isWall, tileSize0, flipUV0);
 
             if (isWall && rooms[1] != null) 
-                vertex.texCoord1 = CalculateUVs(vertex.position, pointOne, isWall, tileSize1);
+                vertex.texCoord1 = CalculateUVs(vertex.position + uvOffset1, pointOne, pointTwo, isWall, tileSize1, flipUV1);
 
             vertices[i] = vertex;
         }
@@ -200,30 +196,7 @@ public class WorldMapExtruder : Extruder {
             ZoneRoomWrapper room = rooms.Length > i ? rooms[i] : null;
             Material mat = materials[i];
 
-            if (room != null 
-                && (isWall || room.FloorIndexMap != null) 
-                && (room.WallIndexMap != null || room.Room.PickWallsRandomly)) {
-                    IndexMapWrapper map = null;
-
-                    if (isWall) map = room.WallIndexMap ?? room.Room.GetWallIndexMap();
-                    else map = room.FloorIndexMap;
-
-                    mat.SetTexture("_MainTex", map.AtlasTexture);
-                    mat.SetTexture("_IndexTex", map.IndexMapTexture);
-                    mat.SetVector("_IndexTex_TexelSize", new Vector4(1f / map.IndexMapTexture.width,
-                                                                     1f / map.IndexMapTexture.height,
-                                                                     map.IndexMapTexture.width,
-                                                                     map.IndexMapTexture.height));
-
-                    int cols = Mathf.CeilToInt(map.AtlasTexture.width / (float) map.AtlasGridSize);
-                    int rows = Mathf.CeilToInt(map.AtlasTexture.height / (float) map.AtlasGridSize);
-
-                    mat.SetVector("_AtlasDims", new Vector2(cols, rows));
-                    mat.SetFloat("_UV", i);
-            }
-
-            if (renderOneFacePerSubmesh) 
-                mat.SetFloat("_Cull", (float) CullMode.Back);
+            PopulateMaterial(i, mat, room, isWall, renderOneFacePerSubmesh);
         }
 
         // create mesh and load data into it
@@ -280,17 +253,82 @@ public class WorldMapExtruder : Extruder {
         tangent = new half4(new float4(tan3, 1f)); // −1 to flip
     }
 
-    private half2 CalculateUVs(Vector3 position, Vector3 cornerOne, bool isWall, Vector2 tileSize) {
-        // remove the y and find the distance between corner and position, aka edge position
-        float uValue = isWall ? 
-                        Vector2.Distance(new Vector2(position.x, position.z), 
-                                         new Vector2(cornerOne.x, cornerOne.z))
-                        : position.x;
+    private half2 CalculateUVs(Vector3 position, Vector3 cornerOne, Vector3 cornerTwo, 
+                               bool isWall, Vector2 tileSize, bool flip = false, bool repeat = true) {
+        float uValue = position.x;
+
+        if (isWall) {
+            float length = Vector2.Distance(new Vector2(cornerOne.x, cornerOne.z),
+                                            new Vector2(cornerTwo.x, cornerTwo.z));
+
+            uValue = Vector2.Distance(new Vector2(position.x, position.z),
+                                      new Vector2(cornerOne.x, cornerOne.z));
+
+            if (flip) uValue = length - uValue;
+        }
 
         return new half2(
             new half(uValue / tileSize.x),
             new half((isWall ? position.y : position.z) / tileSize.y)
         );
+    }
+    
+    private void CalculateRoomUVModifiers(bool isWall, Vector2[] points, ZoneRoomWrapper[] rooms, Vector3[] zoneCenters, 
+                                          Vector3 globalCoords, Bounds bounds,
+                                          out Vector3 pointOne, out Vector3 pointTwo, out bool flipUV0, out bool flipUV1,
+                                          out Vector2 tileSize0, out Vector2 tileSize1, out float3 uvOffset0, out float3 uvOffset1) {
+        pointOne = points[0];
+        pointTwo = points[1];
+        IndexMapWrapper wrapper0 = rooms[0]?.GetIndexMap(isWall);
+        IndexMapWrapper wrapper1 = isWall && rooms[1] != null ? rooms[1].GetIndexMap(isWall) : null;
+        flipUV0 = isWall && wrapper0 != null && ShouldFlipUV(pointOne, pointTwo, zoneCenters[0]);
+        flipUV1 = isWall && wrapper1 != null && ShouldFlipUV(pointOne, pointTwo, zoneCenters[1]);
+
+        RotateVerticeToMatchParentRotation(ref pointOne);
+        RotateVerticeToMatchParentRotation(ref pointTwo);
+
+        pointOne -= globalCoords;
+        pointTwo -= globalCoords;
+
+        tileSize0 = wrapper0 != null ? wrapper0.GetTileSize(isWall, bounds, pointOne, pointTwo) : Vector2.one;
+        tileSize1 = wrapper1 != null ? wrapper1.GetTileSize(isWall, bounds, pointOne, pointTwo) : Vector2.one;
+        uvOffset0 = wrapper0 != null ? wrapper0.GetUVOffset(isWall, bounds, pointOne, pointTwo) : float3.zero;
+        uvOffset1 = wrapper1 != null ? wrapper1.GetUVOffset(isWall, bounds, pointOne, pointTwo) : float3.zero;
+    }
+
+    private bool ShouldFlipUV(Vector2 a, Vector2 b, Vector2 interior) {
+        // cross >= 0 = interior on right side
+        return ((b.x - a.x) * (interior.y - a.y) -
+                (b.y - a.y) * (interior.x - a.x)) >= 0;
+    }
+
+    private void PopulateMaterial(int index, Material mat, ZoneRoomWrapper room, bool isWall, bool renderOneFacePerSubmesh) {
+        if (room != null 
+            && (isWall || room.FloorIndexMap != null) 
+            && (room.WallIndexMap != null || room.Room.PickWallsRandomly)) {
+                IndexMapWrapper map;
+
+                if (isWall) map = room.WallIndexMap ?? room.Room.GetWallIndexMap();
+                else map = room.FloorIndexMap;
+
+                mat.SetTexture("_MainTex", map.AtlasTexture);
+                mat.SetTexture("_IndexTex", map.IndexMapTexture);
+                mat.SetVector("_IndexTex_TexelSize", new Vector4(1f / map.IndexMapTexture.width,
+                                                                 1f / map.IndexMapTexture.height,
+                                                                 map.IndexMapTexture.width,
+                                                                 map.IndexMapTexture.height));
+
+                int cols = Mathf.CeilToInt(map.AtlasTexture.width / (float) map.AtlasGridSize);
+                int rows = Mathf.CeilToInt(map.AtlasTexture.height / (float) map.AtlasGridSize);
+
+                mat.SetVector("_AtlasDims", new Vector2(cols, rows));
+                mat.SetFloat("_UV", index);
+                mat.SetFloat("_Repeat", map.TextureWrapMode == IndexMapWrapper.WrapMode.NoRepeat ? 0f : 1f);
+                mat.SetColor("_Color", map.DefaultColor);
+        }
+
+        if (renderOneFacePerSubmesh) 
+            mat.SetFloat("_Cull", (float) CullMode.Back);
     }
 
     private static (Corner,Corner) SortCornerPair(Corner a, Corner b) {

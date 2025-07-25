@@ -8,6 +8,7 @@ Shader "Custom/Tiling2D_URP"
         _AtlasDims("Atlas Dims (cols, rows)", Vector) = (8,8,0,0)
         _IndexTex_TexelSize("Index Map Texel Size (1/w, 1/h)", Vector) = (0,0,0,0)
         _UV("UV Set (TEXCOORD0, TEXCOORD1, etc.)", Float) = 0
+        _Repeat("Should Repeat", Float) = 0 // 0 = false, 1 = true
         _Cull("Cull Mode", Float) = 2 // 0: off 1: front 2: back
     }
 
@@ -35,6 +36,7 @@ Shader "Custom/Tiling2D_URP"
                 float4 _AtlasDims; // xy = cols, rows
                 float4 _IndexTex_TexelSize;
                 float _UV; // which UV set to use
+                float _Repeat;
             CBUFFER_END
 
             Texture2D<float4> _MainTex;
@@ -72,11 +74,16 @@ Shader "Custom/Tiling2D_URP"
             half4 frag (Varyings IN) : SV_Target
             {
                 float2 uv = _UV == 0.0 ? IN.uv : IN.uv2;
-                float2 cell = floor(IN.uv);  // integer cell coordinate
-                float2 localUV = frac(IN.uv); // 0-1 inside the cell
+                float2 cell = floor(uv);  // integer cell coordinate
+                float2 localUV = frac(uv); // 0-1 inside the cell
 
                 // convert cell coord -> lookup into index texture (nearest filtering)
-                float2 indexUV = frac((cell + 0.5) * _IndexTex_TexelSize.xy);
+                float2 indexUV = (cell + 0.5) * _IndexTex_TexelSize.xy;
+
+                if (_Repeat == 0.0 && (any(indexUV > 1.0) || any(indexUV < -1.0))) 
+                    return _Color;
+
+                indexUV = frac(indexUV);
                 
                 // the index is stored in red and green channels (0-1 range). 
                 // assume 0-255 mapping
@@ -95,7 +102,7 @@ Shader "Custom/Tiling2D_URP"
                 // so we flip y to fix that
                 float2 atlasUV = (float2(col, rows - 1.0 - row) + localUV) / _AtlasDims.xy;
 
-                return _MainTex.Sample(sampler_MainTex, atlasUV) * _Color;
+                return _MainTex.Sample(sampler_MainTex, atlasUV);
             }
             ENDHLSL
         }
