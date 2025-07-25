@@ -17,17 +17,60 @@ MonoBehaviour:
   WallIndexMaps:
   - AtlasTexture: {fileID: 2800000, guid: fa2a948f1b41b8647a11e29126e9cf0e, type: 3}
     AtlasGridSize: 16
-    IndexMapTexture: {fileID: 2800000, guid: 37956f30d2c539046a0c17dd760f968e, type: 3}
+    IndexMapTexture: {fileID: 2800000, guid: b8ee95eb985ce6c49a05d4e5fb9b8872, type: 3}
     DefaultColor: {r: 0, g: 0, b: 0, a: 1}
     DefaultTileSize: 0.1
     CenterPositionInPercent: {x: 50, y: 50}
-    TextureWrapMode: 1
+    ShouldRepeat: 0
+    TextureWrapMode: 0
+  - AtlasTexture: {fileID: 2800000, guid: fa2a948f1b41b8647a11e29126e9cf0e, type: 3}
+    AtlasGridSize: 16
+    IndexMapTexture: {fileID: 2800000, guid: b8ee95eb985ce6c49a05d4e5fb9b8872, type: 3}
+    DefaultColor: {r: 1, g: 0, b: 0, a: 1}
+    DefaultTileSize: 0.1
+    CenterPositionInPercent: {x: 50, y: 50}
+    ShouldRepeat: 0
+    TextureWrapMode: 0
+  - AtlasTexture: {fileID: 2800000, guid: fa2a948f1b41b8647a11e29126e9cf0e, type: 3}
+    AtlasGridSize: 16
+    IndexMapTexture: {fileID: 2800000, guid: b8ee95eb985ce6c49a05d4e5fb9b8872, type: 3}
+    DefaultColor: {r: 1, g: 0, b: 0.8908205, a: 1}
+    DefaultTileSize: 0.1
+    CenterPositionInPercent: {x: 50, y: 50}
+    ShouldRepeat: 0
+    TextureWrapMode: 0
+  - AtlasTexture: {fileID: 2800000, guid: fa2a948f1b41b8647a11e29126e9cf0e, type: 3}
+    AtlasGridSize: 16
+    IndexMapTexture: {fileID: 2800000, guid: b8ee95eb985ce6c49a05d4e5fb9b8872, type: 3}
+    DefaultColor: {r: 0, g: 0.08110905, b: 1, a: 1}
+    DefaultTileSize: 0.1
+    CenterPositionInPercent: {x: 50, y: 50}
+    ShouldRepeat: 0
+    TextureWrapMode: 0
+  - AtlasTexture: {fileID: 2800000, guid: fa2a948f1b41b8647a11e29126e9cf0e, type: 3}
+    AtlasGridSize: 16
+    IndexMapTexture: {fileID: 2800000, guid: b8ee95eb985ce6c49a05d4e5fb9b8872, type: 3}
+    DefaultColor: {r: 0.014359593, g: 1, b: 0, a: 1}
+    DefaultTileSize: 0.1
+    CenterPositionInPercent: {x: 50, y: 50}
+    ShouldRepeat: 0
+    TextureWrapMode: 0
+  - AtlasTexture: {fileID: 2800000, guid: fa2a948f1b41b8647a11e29126e9cf0e, type: 3}
+    AtlasGridSize: 16
+    IndexMapTexture: {fileID: 2800000, guid: b8ee95eb985ce6c49a05d4e5fb9b8872, type: 3}
+    DefaultColor: {r: 1, g: 0.8616548, b: 0, a: 1}
+    DefaultTileSize: 0.1
+    CenterPositionInPercent: {x: 50, y: 50}
+    ShouldRepeat: 0
+    TextureWrapMode: 0
   FloorIndexMaps:
   - AtlasTexture: {fileID: 2800000, guid: fa2a948f1b41b8647a11e29126e9cf0e, type: 3}
     AtlasGridSize: 16
     IndexMapTexture: {fileID: 2800000, guid: 37956f30d2c539046a0c17dd760f968e, type: 3}
     DefaultColor: {r: 0, g: 0, b: 0, a: 0}
-    DefaultTileSize: 1
+    DefaultTileSize: 0.1
     CenterPositionInPercent: {x: 50, y: 50}
-    TextureWrapMode: 2
-  PickWallsRandomly: 0
+    ShouldRepeat: 0
+    TextureWrapMode: 0
+  PickDifferentIndexMaps: 1
+  PickSequentially: 1

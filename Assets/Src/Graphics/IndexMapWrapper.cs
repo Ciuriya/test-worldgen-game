@@ -6,9 +6,8 @@ using UnityEngine;
 public class IndexMapWrapper {
 
     public enum WrapMode {
-        Repeat,
-        NoRepeat,
-        Fit,
+        None,
+        Fit
     }
 
     [Tooltip("The atlas this index map takes from")]
@@ -28,6 +27,9 @@ public class IndexMapWrapper {
 
     [Tooltip("Where should the texture be centered?\n50% meaning the center of the texture is in the middle.")]
     public Vector2 CenterPositionInPercent = new Vector2(50, 50);
+
+    [Tooltip("Should this texture repeat?")]
+    public bool ShouldRepeat;
 
     [Tooltip("How should this texture wrap?")]
     public WrapMode TextureWrapMode;

@@ -10,17 +10,26 @@ public class Room : ScriptableObject {
     [Tooltip("The material representing this room to the user")]
     public Material Material;
 
-    [Tooltip("The list of possible index maps used to texture this room's walls.\nPicked at random.")]
+    [Tooltip("The list of possible index maps used to texture this room's walls.\nPicked according to PickSequentially.")]
     public List<IndexMapWrapper> WallIndexMaps;
 
-    [Tooltip("The list of possible index maps used to texture this room's floor.\nPicked at random.")]
+    [Tooltip("The list of possible index maps used to texture this room's floor.\nPicked according to PickSequentially.")]
     public List<IndexMapWrapper> FloorIndexMaps;
 
     [Tooltip("Should a different index map be picked for each wall?")]
-    public bool PickWallsRandomly;
+    public bool PickDifferentIndexMaps;
 
-    public IndexMapWrapper GetWallIndexMap() =>
-        WallIndexMaps.Count > 0 ? WallIndexMaps[Random.Range(0, WallIndexMaps.Count)] : null;
+    [Tooltip("Should we always pick in order or pick randomly?")]
+    public bool PickSequentially;
+
+    public IndexMapWrapper GetWallIndexMap(int index = 0) {
+        if (WallIndexMaps.Count == 0) return null;
+
+        if (!PickSequentially) index = Random.Range(0, WallIndexMaps.Count);
+        else if (WallIndexMaps.Count <= index) return null;
+
+        return WallIndexMaps[index];
+    }
     
     public IndexMapWrapper GetFloorIndexMap() =>
         FloorIndexMaps.Count > 0 ? FloorIndexMaps[Random.Range(0, FloorIndexMaps.Count)] : null;
