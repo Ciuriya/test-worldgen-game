@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Unity.Collections;
@@ -12,11 +13,11 @@ public class WorldMapMeshHelper {
 
 		public override bool Equals(object obj) {
 			if (obj is MeshEdge edge) 
-				return CornerOne.Equals(edge.CornerOne) && CornerTwo.Equals(edge.CornerTwo);
+				return CornerOne == edge.CornerOne && CornerTwo == edge.CornerTwo;
 			else return false;
     	}
 
-		public override int GetHashCode() => CornerOne.GetHashCode() + CornerTwo.GetHashCode();
+		public override int GetHashCode() => HashCode.Combine(CornerOne.GetHashCode(), CornerTwo.GetHashCode());
 	}
 
 	[StructLayout(LayoutKind.Sequential)]
@@ -37,12 +38,12 @@ public class WorldMapMeshHelper {
 
 	private readonly World _world;
 	private Dictionary<Zone, ZoneRoomWrapper> _zoneRoomWrappers;
-	private readonly List<MeshEdge> _edgesProcessed;
+	private readonly HashSet<MeshEdge> _edgesProcessed;
 
 	public WorldMapMeshHelper(World world) {
 		_world = world;
 		_zoneRoomWrappers = new Dictionary<Zone, ZoneRoomWrapper>();
-		_edgesProcessed = new List<MeshEdge>();
+		_edgesProcessed = new HashSet<MeshEdge>();
 	}
 
 	public void Setup() {
@@ -84,10 +85,7 @@ public class WorldMapMeshHelper {
 	public bool CanProcessZoneEdge(Corner cornerOne, Corner cornerTwo) {
 		MeshEdge edge = CreateMeshEdge(cornerOne, cornerTwo);
 
-		if (_edgesProcessed.Contains(edge)) return false;
-		_edgesProcessed.Add(edge);
-
-		return true;
+		return _edgesProcessed.Add(edge);
 	}
 
 	public int FindLeadingEdgeIndex(Zone zone, Corner cornerOne, Corner cornerTwo) {

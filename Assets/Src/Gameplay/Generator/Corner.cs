@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 public class Corner {
     public Vector2 Coord { get; private set; }
@@ -36,7 +37,7 @@ public class Corner {
         else return corner.Coord == Coord;
     }
 
-    public override int GetHashCode() {
-        return Coord.GetHashCode();
-    }
+    public override int GetHashCode() =>
+        HashCode.Combine(Mathf.RoundToInt(Coord.x * 1000f), 
+                         Mathf.RoundToInt(Coord.y * 1000f));
 }

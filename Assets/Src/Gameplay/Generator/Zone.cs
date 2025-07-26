@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 public class Zone {
 
@@ -95,7 +96,7 @@ public class Zone {
         else return zone.Center == Center;
     }
 
-    public override int GetHashCode() {
-        return Center.GetHashCode();
-    }
+    public override int GetHashCode() =>
+        HashCode.Combine(Mathf.RoundToInt(Center.x * 1000f), 
+                         Mathf.RoundToInt(Center.y * 1000f));
 }

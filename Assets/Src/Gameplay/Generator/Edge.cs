@@ -1,4 +1,6 @@
-﻿public class Edge {
+﻿using System;
+
+public class Edge {
 
     public Corner FirstCorner { get; private set; }
     public Corner SecondCorner { get; private set; }
@@ -34,7 +36,6 @@
         else return edge.FirstCorner == FirstCorner && edge.SecondCorner == SecondCorner;
     }
 
-    public override int GetHashCode() {
-        return FirstCorner.GetHashCode() + SecondCorner.GetHashCode();
-    }
+    public override int GetHashCode() =>
+        HashCode.Combine(FirstCorner.GetHashCode(), SecondCorner.GetHashCode());
 }
