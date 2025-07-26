@@ -66,15 +66,14 @@ public class WorldMapMeshHelper {
                     FloorIndexMap = zone.Room.GetFloorIndexMap()
                 });
 
-        foreach (Zone zone in _zoneRoomWrappers.Keys) {
-            ZoneRoomWrapper wrapper = _zoneRoomWrappers[zone];
-            int cornerCount = zone.Corners.Count;
+        foreach (var pair in _zoneRoomWrappers) {
+            int cornerCount = pair.Key.Corners.Count;
 
             for (int i = 0; i < cornerCount; ++i)
-                if ((i > 0 && wrapper.Room.PickDifferentIndexMaps) || i == 0) {
-                    IndexMapWrapper picked = wrapper.Room.GetWallIndexMap(i);
+                if ((i > 0 && pair.Value.Room.PickDifferentIndexMaps) || i == 0) {
+                    IndexMapWrapper picked = pair.Value.Room.GetWallIndexMap(i);
 
-                    if (picked != null) wrapper.WallIndexMaps.Add(picked);
+                    if (picked != null) pair.Value.WallIndexMaps.Add(picked);
                 }
         }
 	}
@@ -110,22 +109,13 @@ public class WorldMapMeshHelper {
 		new NativeArray<VertexAttributeDescriptor>(_layout, Allocator.Temp);
 
 	public Bounds CalculateBounds(Vector3[] positions) {
-        Vector3 min = Vector2.positiveInfinity;
-        Vector3 max = Vector2.negativeInfinity;
+		Bounds bounds = new Bounds(positions[0], Vector3.zero);
 
-        foreach (Vector3 position in positions) {
-            if (position.x < min.x) min.x = position.x;
-            if (position.y < min.y) min.y = position.y;
-            if (position.z < min.z) min.z = position.z;
-            if (position.x > max.x) max.x = position.x;
-            if (position.y > max.y) max.y = position.y;
-            if (position.z > max.z) max.z = position.z;
-        }
+		// grow bounds position by position
+		for (int i = 1; i < positions.Length; ++i) 
+			bounds.Encapsulate(positions[i]);
 
-        return new Bounds(new Vector3((max.x - min.x) / 2f + min.x,
-                                      (max.y - min.y) / 2f + min.y,
-                                      (max.z - min.z) / 2f + min.z),
-                          max - min);
+		return bounds;
     }
 
 	public void CalculateNormals(Vector3[] positions, ushort[] triangles, out Vector3 normal, out half4 tangent) {
