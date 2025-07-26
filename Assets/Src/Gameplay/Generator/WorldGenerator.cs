@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class WorldGenerator {
 
-    private WorldGeneratorData _data;
+    private readonly WorldGeneratorData _data;
     private World _world;
 
     public WorldGenerator(WorldGeneratorData worldGenData) {
