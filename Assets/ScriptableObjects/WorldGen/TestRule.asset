@@ -12,33 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 086c80000303ab0458a37ded943768b5, type: 3}
   m_Name: TestRule
   m_EditorClassIdentifier: 
-  ApplicationLimit: 25
+  ApplicationLimit: 1000
   Input:
-    RandomizeVerification: 1
+    RandomizeVerification: 0
     RuleApplicationMinimalVariationPercentage: 0
     ValidRooms: []
     DistanceFromEdge:
       Min: 0
       Max: 50
-    RequirementCount: 1
-    Requirements:
-    - Room: {fileID: 11400000, guid: 1f223f07cf857e34e97d291485d0eabd, type: 2}
-      Mandatory: 1
-      DirectNeighbors: 0
-      NoDirectNeighbors: 0
-      NeighborhoodPercent:
-        Min: 0
-        Max: 19
-      DistanceFromNearest:
-        Min: 0
-        Max: 100
-      Existing:
-        Min: 0
-        Max: 100
-      Connected:
-        Min: 0
-        Max: 20
-      ConnectedPercentOfTotalWithRoom:
-        Min: 0
-        Max: 30
+    RequirementCount: 0
+    Requirements: []
   Output: {fileID: 11400000, guid: 1f223f07cf857e34e97d291485d0eabd, type: 2}

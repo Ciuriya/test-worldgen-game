@@ -5,6 +5,7 @@ using UnityEngine;
 [Serializable]
 public class IndexMapWrapper {
 
+    [Serializable]
     public enum WrapMode {
         None,
         Fit

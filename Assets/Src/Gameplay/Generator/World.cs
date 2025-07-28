@@ -1,7 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 using Delaunay;
-using static UnityEngine.RuleTile.TilingRuleOutput;
 
 public class World {
 
@@ -296,7 +295,7 @@ public class World {
         return validRequirements >= rule.Input.RequirementCount && !checkingMandatory;
     }
 
-    public void GenerateMesh() {
+    public WorldMapExtruder GenerateMesh() {
         if (_worldObject != null) Object.Destroy(_worldObject);
 
         _worldObject = new GameObject("Map");
@@ -315,6 +314,8 @@ public class World {
         extruder.World = this;
 
         extruder.Extrude();
+
+        return extruder;
     }
 
     public void Destroy() {

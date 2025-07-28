@@ -23,14 +23,14 @@ public class Room : ScriptableObject {
     public bool PickSequentially;
 
     public IndexMapWrapper GetWallIndexMap(int index = 0) {
-        if (WallIndexMaps.Count == 0) return null;
+        if (WallIndexMaps.Count == 0) return default;
 
         if (!PickSequentially) index = Random.Range(0, WallIndexMaps.Count);
-        else if (WallIndexMaps.Count <= index) return null;
+        else if (WallIndexMaps.Count <= index) return default;
 
         return WallIndexMaps[index];
     }
     
     public IndexMapWrapper GetFloorIndexMap() =>
-        FloorIndexMaps.Count > 0 ? FloorIndexMaps[Random.Range(0, FloorIndexMaps.Count)] : null;
+        FloorIndexMaps.Count > 0 ? FloorIndexMaps[Random.Range(0, FloorIndexMaps.Count)] : default;
 }

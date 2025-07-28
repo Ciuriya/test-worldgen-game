@@ -1,11 +1,16 @@
 using Delaunay;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 public class WorldGenerator {
 
     private readonly WorldGeneratorData _data;
     private World _world;
+    private bool _isGenerating;
+    private double _totalGenerationTime;
+    private WorldMapExtruder _extruder;
 
     public WorldGenerator(WorldGeneratorData worldGenData) {
         _data = worldGenData;
@@ -16,14 +21,26 @@ public class WorldGenerator {
     public void StartGenerationSequence() {
         _world?.Destroy();
 
-        float generationTime = Time.realtimeSinceStartup;
+        _totalGenerationTime = Time.realtimeSinceStartupAsDouble;
 
         _world = new World(GenerateVoronoi(), _data);
         _world.Load();
-        _world.GenerateMesh();
+        _extruder = _world.GenerateMesh();
+        _isGenerating = true;
+    }
 
-        generationTime = Time.realtimeSinceStartup - generationTime;
-        Debug.Log($"Generated in {Mathf.RoundToInt(generationTime * 1000) / 1000.0f} seconds.");
+    public void EarlyUpdate() {
+        if (_isGenerating && !_extruder.IsGenerating)
+            FinalizeGeneratingSequence();
+    }
+
+    private void FinalizeGeneratingSequence() {
+        _isGenerating = false;
+        _totalGenerationTime = Math.Round(Time.realtimeSinceStartupAsDouble - _totalGenerationTime, 3);
+        double extrusionTime = Math.Round(_extruder.GenerationTime, 3);
+        
+        Debug.Log($"Generated in {_totalGenerationTime} seconds.\n" +
+                  $"Extrusion took {extrusionTime} seconds.");
     }
 
     public Voronoi GenerateVoronoi() {

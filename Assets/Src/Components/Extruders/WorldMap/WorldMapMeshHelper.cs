@@ -1,12 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-public class WorldMapMeshHelper {
+internal class WorldMapMeshHelper {
 	private class MeshEdge {
 		public Corner CornerOne;
 		public Corner CornerTwo;
@@ -21,14 +22,14 @@ public class WorldMapMeshHelper {
 	}
 
 	[StructLayout(LayoutKind.Sequential)]
-    public struct CustomVertex {
+    internal struct CustomVertex {
         public float3 position, normal;
         public half4 tangent;
         public half2 texCoord0;
         public half2 texCoord1;
     }
 
-	private static readonly VertexAttributeDescriptor[] _layout = {
+	internal static readonly VertexAttributeDescriptor[] Layout = {
 		new VertexAttributeDescriptor(dimension: 3),
 		new VertexAttributeDescriptor(VertexAttribute.Normal,  dimension: 3),
 		new VertexAttributeDescriptor(VertexAttribute.Tangent, VertexAttributeFormat.Float16, 4),
@@ -40,13 +41,13 @@ public class WorldMapMeshHelper {
 	private Dictionary<Zone, ZoneRoomWrapper> _zoneRoomWrappers;
 	private readonly HashSet<MeshEdge> _edgesProcessed;
 
-	public WorldMapMeshHelper(World world) {
+	internal WorldMapMeshHelper(World world) {
 		_world = world;
 		_zoneRoomWrappers = new Dictionary<Zone, ZoneRoomWrapper>();
 		_edgesProcessed = new HashSet<MeshEdge>();
 	}
 
-	public void Setup() {
+	internal void Setup() {
 		SetupRoomWrappers();
 	}
 
@@ -78,16 +79,13 @@ public class WorldMapMeshHelper {
         }
 	}
 
-	public ZoneRoomWrapper GetZoneRoomWrapper(Zone zone) => 
+	internal ZoneRoomWrapper GetZoneRoomWrapper(Zone zone) => 
 		zone != null && _zoneRoomWrappers.ContainsKey(zone) ? _zoneRoomWrappers[zone] : null;
 
-	public bool CanProcessZoneEdge(Corner cornerOne, Corner cornerTwo) {
-		MeshEdge edge = CreateMeshEdge(cornerOne, cornerTwo);
+	internal bool CanProcessZoneEdge(Corner cornerOne, Corner cornerTwo) =>
+        _edgesProcessed.Add(CreateMeshEdge(cornerOne, cornerTwo));
 
-		return _edgesProcessed.Add(edge);
-	}
-
-	public int FindLeadingEdgeIndex(Zone zone, Corner cornerOne, Corner cornerTwo) {
+	internal int FindLeadingEdgeIndex(Zone zone, Corner cornerOne, Corner cornerTwo) {
 		if (zone == null) return 0;
 
         int indexA = zone.Corners.IndexOf(cornerOne);
@@ -100,15 +98,12 @@ public class WorldMapMeshHelper {
                Mathf.Min(indexA, indexB);            // fallback, should not happen
     }
 
-	public Vector3 RotateVertexToMatchParentRotation(Vector3 vertex, Transform transform) => transform.rotation * vertex;
+	internal static float3 RotateVertexToMatchParentRotation(float3 vertex, Transform transform) => transform.rotation * vertex;
 
-	public Vector3 TranslateVectorToLocal(Vector3 vec, Vector3 globalRef, Transform transform) => 
+	internal static float3 TranslateVectorToLocal(float3 vec, float3 globalRef, Transform transform) => 
 		RotateVertexToMatchParentRotation(vec, transform) - globalRef;
 
-	public NativeArray<VertexAttributeDescriptor> GetVertexLayout() =>
-		new NativeArray<VertexAttributeDescriptor>(_layout, Allocator.Temp);
-
-	public Bounds CalculateBounds(Vector3[] positions) {
+	internal static Bounds CalculateBounds(NativeArray<float3> positions) {
 		Bounds bounds = new Bounds(positions[0], Vector3.zero);
 
 		// grow bounds position by position
@@ -118,39 +113,42 @@ public class WorldMapMeshHelper {
 		return bounds;
     }
 
-	public void CalculateNormals(Vector3[] positions, ushort[] triangles, out Vector3 normal, out half4 tangent) {
-        Vector3 nSum = Vector3.zero;
-        Vector3 tSum = Vector3.zero;
+    [BurstCompile]
+	internal static void CalculateNormals(NativeSlice<float3> positions, NativeArray<ushort> triangles, 
+                                          out float3 normal, out half4 tangent) {
+        float3 nSum = float3.zero;
+        float3 tSum = float3.zero;
 
         for (int i = 0; i < triangles.Length; i += 3) {
-            Vector3 p0 = positions[triangles[i]];
-            Vector3 p1 = positions[triangles[i + 1]];
-            Vector3 p2 = positions[triangles[i + 2]];
+            float3 p0 = positions[triangles[i]];
+            float3 p1 = positions[triangles[i + 1]];
+            float3 p2 = positions[triangles[i + 2]];
 
             // area-weighted face normal
-            Vector3 face = Vector3.Cross(p1 - p0, p2 - p0);
+            float3 face = math.cross(p1 - p0, p2 - p0);
             nSum += face;
 
             // use the first edge as a tangent candidate
             tSum += p1 - p0;
         }
 
-        normal = nSum.normalized;
+        normal = math.normalize(nSum);
 
-        Vector3 tan3 = Vector3.ProjectOnPlane(tSum, normal).normalized;
+        float3 tan3 = math.normalize(math.project(tSum, normal));
         tangent = new half4(new float4(tan3, 1f)); // −1 to flip
     }
 
-	public half2 CalculateUVs(bool isEdge, float3 vertex, UVModifiers mods) {
+    [BurstCompile]
+	internal static half2 CalculateUVs(bool isEdge, float3 vertex, UVModifiers mods) {
 		vertex += mods.UVOffset;
         float uValue = vertex.x;
 
         if (isEdge) {
-            float length = Vector2.Distance(new Vector2(mods.PointOne.x, mods.PointOne.z),
-                                            new Vector2(mods.PointTwo.x, mods.PointTwo.z));
+            float length = math.distance(new float2(mods.PointOne.x, mods.PointOne.z),
+                                         new float2(mods.PointTwo.x, mods.PointTwo.z));
 
-            uValue = Vector2.Distance(new Vector2(vertex.x, vertex.z),
-                                      new Vector2(mods.PointOne.x, mods.PointOne.z));
+            uValue = math.distance(new float2(vertex.x, vertex.z),
+                                   new float2(mods.PointOne.x, mods.PointOne.z));
 
             if (mods.FlipUV) uValue = length - uValue;
         }
@@ -161,16 +159,11 @@ public class WorldMapMeshHelper {
         );
     }
 
-	public bool ShouldFlipUV(Vector2 a, Vector2 b, Vector2 interior) {
+	internal static bool ShouldFlipUV(float3 a, float3 b, float3 interior) {
         // cross < 0 = interior on right side
         return ((b.x - a.x) * (interior.y - a.y) -
                 (b.y - a.y) * (interior.x - a.x)) < 0;
     }
-
-	public void Empty() {
-		_zoneRoomWrappers.Clear();
-		_edgesProcessed.Clear();
-	}
 
 	private MeshEdge CreateMeshEdge(Corner a, Corner b) {
 		bool isAFirst = a.GetHashCode() <= b.GetHashCode();
