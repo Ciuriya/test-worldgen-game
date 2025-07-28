@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa345193730a6b34b93422471904cf28, type: 3}
   m_Name: DefaultWorldGenData
   m_EditorClassIdentifier: 
-  CellCount: 100
-  LloydRelaxations: 2
+  CellCount: 2500
+  LloydRelaxations: 10
   GrammarRules:
   - {fileID: 11400000, guid: 4980d5294703fcd4080f980ef6d0bd56, type: 2}
-  MapSize: {x: 50, y: 50}
+  MapSize: {x: 1250, y: 1250}
   LineThickness: 10
   ZoneMaterial: {fileID: 2100000, guid: 1b4d4c2d05f56764ea50f02ff40e9396, type: 2}
   LineMaterial: {fileID: 2100000, guid: cd97eea8c1fd59046981b62f0f376c43, type: 2}

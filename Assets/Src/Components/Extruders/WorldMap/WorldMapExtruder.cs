@@ -17,6 +17,7 @@ public class WorldMapExtruder : Extruder {
     public double GenerationTime { get; private set; }
 
     private WorldMapMeshHelper _helper = null;
+    private JobHandle _currentJob;
     private WorldMapMeshData[] _currentMeshDataArray;
     private NativeArray<MeshData> _currentResultArray;
     internal static readonly NativeArray<ushort> ZoneTriangles = new NativeArray<ushort>(
@@ -39,8 +40,8 @@ public class WorldMapExtruder : Extruder {
     
     private void GenerateFloorMeshes() {
         _currentMeshDataArray = new WorldMapMeshData[World.Zones.Count];
-        NativeArray<JobMeshInfo> zoneDataArray = new NativeArray<JobMeshInfo>(World.Zones.Count, Allocator.Persistent);
-        NativeArray<JobMeshInfo> neighborDataArray = new NativeArray<JobMeshInfo>(World.Zones.Count, Allocator.Persistent);
+        NativeArray<JobMeshInfo> zoneDataArray = new NativeArray<JobMeshInfo>(World.Zones.Count, Allocator.TempJob);
+        NativeArray<JobMeshInfo> neighborDataArray = new NativeArray<JobMeshInfo>(World.Zones.Count, Allocator.TempJob);
 
         for (int i = 0; i < World.Zones.Count; ++i) {
             _currentMeshDataArray[i] = CreateZoneFloorData(World.Zones[i], transform);
@@ -65,8 +66,8 @@ public class WorldMapExtruder : Extruder {
 
     private void GenerateEdgeMeshes(WorldMapMeshData[] edgeDataArray) {
         _currentMeshDataArray = edgeDataArray;
-        NativeArray<JobMeshInfo> zoneDataArray = new NativeArray<JobMeshInfo>(edgeDataArray.Length, Allocator.Persistent);
-        NativeArray<JobMeshInfo> neighborDataArray = new NativeArray<JobMeshInfo>(edgeDataArray.Length, Allocator.Persistent);
+        NativeArray<JobMeshInfo> zoneDataArray = new NativeArray<JobMeshInfo>(edgeDataArray.Length, Allocator.TempJob);
+        NativeArray<JobMeshInfo> neighborDataArray = new NativeArray<JobMeshInfo>(edgeDataArray.Length, Allocator.TempJob);
 
         for (int i = 0; i < edgeDataArray.Length; ++i) {
             zoneDataArray[i] = _currentMeshDataArray[i].GetZoneInfo().Info;
@@ -85,7 +86,7 @@ public class WorldMapExtruder : Extruder {
         if (!zoneArray.IsCreated || !neighborArray.IsCreated)
             return;
 
-        _currentResultArray = new NativeArray<MeshData>(zoneArray.Length, Allocator.Persistent);
+        _currentResultArray = new NativeArray<MeshData>(zoneArray.Length, Allocator.TempJob);
         for (int i = 0; i < zoneArray.Length; ++i)
             _currentResultArray[i] = _currentMeshDataArray[i].GetMeshDataArray()[0];
 
@@ -100,17 +101,18 @@ public class WorldMapExtruder : Extruder {
             PointsArray = points,
             PositionsArray = positions,
             ResultArray = _currentResultArray,
-            EmptyArray = new NativeArray<ushort>(0, Allocator.Persistent)
+            EmptyArray = new NativeArray<ushort>(0, Allocator.TempJob)
         };
 
-        StartCoroutine(WaitForJobToFinish(job.ScheduleBatch(zoneArray.Length, 32), isEdge));
+        _currentJob = job.ScheduleBatch(zoneArray.Length, 32);
+        StartCoroutine(WaitForJobToFinish(isEdge));
     }
 
-    private IEnumerator WaitForJobToFinish(JobHandle handle, bool isEdge) {
-        while (!handle.IsCompleted)
+    private IEnumerator WaitForJobToFinish(bool isEdge) {
+        while (!_currentJob.IsCompleted)
             yield return null;
 
-        handle.Complete();
+        _currentJob.Complete();
 
         try {
             if (isEdge) FinalizeEdgeMeshes();
@@ -139,8 +141,8 @@ public class WorldMapExtruder : Extruder {
         }
 
         WorldMapMeshData data = new WorldMapMeshData(zone, parent, transform, (Vector3) zone.Center, 
-                                                     new NativeArray<float2>(points, Allocator.Persistent), 
-                                                     new NativeArray<float3>(vertices, Allocator.Persistent), 
+                                                     new NativeArray<float2>(points, Allocator.TempJob), 
+                                                     new NativeArray<float3>(vertices, Allocator.TempJob), 
                                                      MeshDefaultMaterial, _helper);
 
         data.SetupFloorMesh(zone);
@@ -160,7 +162,7 @@ public class WorldMapExtruder : Extruder {
             Corner cornerTwo = zone.Corners[(i + 1) % cornerCount];
 
             if (!_helper.CanProcessZoneEdge(cornerOne, cornerTwo)) continue;
-            
+
             Zone neighbor = zone.Neighbors.Find(z => z.Corners.Contains(cornerOne) && z.Corners.Contains(cornerTwo));
 
             meshDataList.Add(CreateZoneEdgeData(zone, neighbor, i, 
@@ -184,8 +186,8 @@ public class WorldMapExtruder : Extruder {
         float3 center = ((cornerOne + cornerTwo) * 0.5f).ConvertTo3D();
 
         WorldMapMeshData data = new WorldMapMeshData(zone, parent, transform, center, 
-                                                     new NativeArray<float2>(points, Allocator.Persistent), 
-                                                     new NativeArray<float3>(positions, Allocator.Persistent), 
+                                                     new NativeArray<float2>(points, Allocator.TempJob), 
+                                                     new NativeArray<float3>(positions, Allocator.TempJob), 
                                                      MeshDefaultMaterial, _helper);
 
         data.SetupEdgeMesh(zone, neighbor, edgeIndex, neighborEdgeIndex);
@@ -213,7 +215,7 @@ public class WorldMapExtruder : Extruder {
     private void BuildMeshPointsAndPositions(WorldMapMeshData[] dataArray, out NativeArray<JobMeshDataKeys> keys,
                                                                            out NativeArray<float2> points,
                                                                            out NativeArray<float3> positions) {
-        keys = new NativeArray<JobMeshDataKeys>(dataArray.Length, Allocator.Persistent);
+        keys = new NativeArray<JobMeshDataKeys>(dataArray.Length, Allocator.TempJob);
         List<float2> pointsList = new List<float2>();
         List<float3> positionsList = new List<float3>();
 
@@ -233,8 +235,8 @@ public class WorldMapExtruder : Extruder {
             positionsList.AddRange(dataPositions);
         }
 
-        points = new NativeArray<float2>(pointsList.ToArray(), Allocator.Persistent);
-        positions = new NativeArray<float3>(positionsList.ToArray(), Allocator.Persistent);
+        points = new NativeArray<float2>(pointsList.ToArray(), Allocator.TempJob);
+        positions = new NativeArray<float3>(positionsList.ToArray(), Allocator.TempJob);
     }
     
     private void CleanupAfterGeneratingMeshes() {
@@ -245,7 +247,6 @@ public class WorldMapExtruder : Extruder {
     }
 
     public void OnDestroy() {
-        
         if (ZoneTriangles.IsCreated)
             ZoneTriangles.Dispose();
 
