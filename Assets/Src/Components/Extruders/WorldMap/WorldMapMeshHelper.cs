@@ -64,20 +64,59 @@ internal class WorldMapMeshHelper {
                 _zoneRoomWrappers.Add(zone, new ZoneRoomWrapper() {
                     Room = zone.Room,
                     WallIndexMaps = new List<IndexMapWrapper>(),
-                    FloorIndexMap = zone.Room.GetFloorIndexMap()
+                    FloorIndexMap = zone.Room.GetFloorIndexMap(),
+                    MergeWallsTileSize = 0,
+                    MergeWallsStartOffsets = new List<float>()
                 });
 
         foreach (var pair in _zoneRoomWrappers) {
             int cornerCount = pair.Key.Corners.Count;
+            IndexMapWrapper mergeWrapper = null;
+            float perimLength = 0;
+            List<float> edgeLengths = new List<float>();
 
-            for (int i = 0; i < cornerCount; ++i)
-                if ((i > 0 && pair.Value.Room.PickDifferentIndexMaps) || i == 0) {
+            for (int i = 0; i < cornerCount; ++i) {
+                if (pair.Value.Room.PickDifferentIndexMaps || i == 0) {
                     IndexMapWrapper picked = pair.Value.Room.GetWallIndexMap(i);
 
-                    if (picked != null) pair.Value.WallIndexMaps.Add(picked);
+                    if (picked != null) {
+                        pair.Value.WallIndexMaps.Add(picked);
+
+                        if (pair.Value.Room.MergeWalls) mergeWrapper = picked;
+                    }
                 }
+
+                if (pair.Value.Room.MergeWalls && mergeWrapper != null) {
+                    Corner cornerOne = pair.Key.Corners[i];
+                    Corner cornerTwo = pair.Key.Corners[(i + 1) % cornerCount];
+                    float edgeLength = Vector2.Distance(cornerOne.Coord, cornerTwo.Coord);
+
+                    edgeLengths.Add(edgeLength);
+                    perimLength += edgeLength;
+                }
+            }
+
+            // we flip here because everything displays right-to-left otherwise
+            pair.Value.WallIndexMaps.Reverse();
+
+            if (perimLength > 0)
+                FillMergedWallsStartOffsets(pair.Value, mergeWrapper, perimLength, edgeLengths);
         }
 	}
+
+    private void FillMergedWallsStartOffsets(ZoneRoomWrapper wrapper, IndexMapWrapper mergeWrapper, 
+                                             float perimLength, List<float> edgeLengths) {
+        wrapper.MergeWallsTileSize = mergeWrapper.TextureWrapMode == IndexMapWrapper.WrapMode.Fit 
+                                     ? perimLength / mergeWrapper.IndexMapTexture.width
+                                     : mergeWrapper.DefaultTileSize;
+
+        float currentOffset = 0;
+        foreach (float edgeLength in edgeLengths) {
+            currentOffset += edgeLength / wrapper.MergeWallsTileSize;
+            // we flip here because everything displays right-to-left otherwise
+            wrapper.MergeWallsStartOffsets.Add(perimLength / wrapper.MergeWallsTileSize - currentOffset);
+        }
+    }
 
 	internal ZoneRoomWrapper GetZoneRoomWrapper(Zone zone) => 
 		zone != null && _zoneRoomWrappers.ContainsKey(zone) ? _zoneRoomWrappers[zone] : null;
@@ -154,7 +193,7 @@ internal class WorldMapMeshHelper {
         }
 
         return new half2(
-            new half(uValue / mods.TileSize.x),
+            new half((uValue / mods.TileSize.x) + mods.StartOffset),
             new half((isEdge ? vertex.y : vertex.z) / mods.TileSize.y)
         );
     }

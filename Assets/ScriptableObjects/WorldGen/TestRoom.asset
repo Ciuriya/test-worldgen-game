@@ -22,7 +22,7 @@ MonoBehaviour:
     DefaultTileSize: 0.1
     CenterPositionInPercent: {x: 50, y: 50}
     ShouldRepeat: 0
-    TextureWrapMode: 0
+    TextureWrapMode: 1
   - AtlasTexture: {fileID: 2800000, guid: fa2a948f1b41b8647a11e29126e9cf0e, type: 3}
     AtlasGridSize: 16
     IndexMapTexture: {fileID: 2800000, guid: b8ee95eb985ce6c49a05d4e5fb9b8872, type: 3}
@@ -72,5 +72,6 @@ MonoBehaviour:
     CenterPositionInPercent: {x: 50, y: 50}
     ShouldRepeat: 0
     TextureWrapMode: 0
-  PickDifferentIndexMaps: 1
+  PickDifferentIndexMaps: 0
   PickSequentially: 1
+  MergeWalls: 1

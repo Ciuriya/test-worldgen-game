@@ -52,7 +52,7 @@ internal class WorldMapMeshData {
         _zone.Name += " Edge";
         _zone.Info.EdgeIndex = edgeIndex;
         _zone.Material = GetMaterial(_zone, zoneWrapper, false);
-        _zone.Info.UVModifiers = GetUVModifiers(_zone, zoneWrapper, false);
+        _zone.Info.UVModifiers = GetUVModifiers(zone, _zone, zoneWrapper);
         
         if (neighbor != null) {
             _neighbor.Info = new JobMeshInfo {
@@ -64,14 +64,14 @@ internal class WorldMapMeshData {
 
             ZoneRoomWrapper neighborWrapper = _helper.GetZoneRoomWrapper(neighbor);
             _neighbor.Material = GetMaterial(_neighbor, neighborWrapper, true);
-            _neighbor.Info.UVModifiers = GetUVModifiers(_neighbor, neighborWrapper, true);
+            _neighbor.Info.UVModifiers = GetUVModifiers(neighbor, _neighbor, neighborWrapper);
         }
     }
 
     internal void SetupFloorMesh(Zone zone) {
         _zone.Info.IsEdge = false;
         _zone.Material = GetMaterial(_zone, _helper.GetZoneRoomWrapper(zone), false);
-        _zone.Info.UVModifiers = GetUVModifiers(_zone, _helper.GetZoneRoomWrapper(zone), false);
+        _zone.Info.UVModifiers = GetUVModifiers(zone, _zone, _helper.GetZoneRoomWrapper(zone));
     }
 
     internal ZoneMeshInfo GetZoneInfo() => _zone;
@@ -126,7 +126,7 @@ internal class WorldMapMeshData {
         return material;
     }
 
-    private UVModifiers GetUVModifiers(ZoneMeshInfo zoneInfo, ZoneRoomWrapper wrapper, bool isNeighbor) {
+    private UVModifiers GetUVModifiers(Zone zone, ZoneMeshInfo zoneInfo, ZoneRoomWrapper wrapper) {
         if (!zoneInfo.Info.IsValid || wrapper == null) return new UVModifiers {};
 
         IndexMapWrapper indexMap = wrapper.GetIndexMap(IsEdge(), zoneInfo.Info.EdgeIndex);
@@ -137,12 +137,20 @@ internal class WorldMapMeshData {
                                                                  _globalRef, _currentTransform),
 		};
 
-        // neighbor inverts this since we're using the zone's data (we don't hold all of the neighbor's data)
-        // meaning we're calculating side 1 and inverting it to get side 2
-        bool shouldFlipUV = WorldMapMeshHelper.ShouldFlipUV(mods.PointOne, mods.PointTwo, _zone.Info.Center);
-		mods.FlipUV = IsEdge() && (isNeighbor ? !shouldFlipUV : shouldFlipUV);
+        bool shouldFlipUV = WorldMapMeshHelper.ShouldFlipUV(mods.PointOne, mods.PointTwo, 
+                                                            WorldMapMeshHelper.TranslateVectorToLocal((Vector3) zone.Center,
+                                                                                                      _globalRef,
+                                                                                                      _currentTransform));
+		mods.FlipUV = IsEdge() && shouldFlipUV;
+        mods.StartOffset = IsEdge() && wrapper.Room.MergeWalls 
+                           && wrapper.MergeWallsStartOffsets.Count > zoneInfo.Info.EdgeIndex ? 
+                           wrapper.MergeWallsStartOffsets[zoneInfo.Info.EdgeIndex] : 0;
 
         mods.TileSize = indexMap.GetTileSize(IsEdge(), _zone.Bounds, mods.PointOne, mods.PointTwo);
+
+        if (IsEdge() && wrapper.Room.MergeWalls) 
+            mods.TileSize = new float2(wrapper.MergeWallsTileSize, wrapper.MergeWallsTileSize);
+        
         mods.UVOffset = indexMap.GetUVOffset(IsEdge(), _zone.Bounds, mods.PointOne, mods.PointTwo);
 
         return mods;

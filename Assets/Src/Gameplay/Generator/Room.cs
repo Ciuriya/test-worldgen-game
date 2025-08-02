@@ -22,6 +22,9 @@ public class Room : ScriptableObject {
     [Tooltip("Should we always pick in order or pick randomly?")]
     public bool PickSequentially;
 
+    [Tooltip("Should all walls be treated as one large wall?")]
+    public bool MergeWalls;
+
     public IndexMapWrapper GetWallIndexMap(int index = 0) {
         if (WallIndexMaps.Count == 0) return default;
 
