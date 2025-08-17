@@ -5,18 +5,18 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-public class ImageControlHandler : VEControlHandler {
+internal class ImageControlHandler : VEControlHandler {
 
-    public event Action<Vector3> OnClick;
-    public event Action<Vector3> OnDragClick;
+    internal event Action<Vector3> OnClick;
+    internal event Action<Vector3> OnDragClick;
 
     private const float ZOOM_STEP = 0.1f;
     private float lastLeftClickTime = 0.0f;
     private float lastDragClickTime = 0.0f;
 
-	public ImageControlHandler(VisualElement element) : base(element) { }
+	internal ImageControlHandler(VisualElement element) : base(element) { }
 
-	public override void OnPointerDown(PointerDownEvent evt) {
+	internal override void OnPointerDown(PointerDownEvent evt) {
 		base.OnPointerDown(evt);
 
         if (evt.button == 0 && EditorApplication.timeSinceStartup - lastLeftClickTime > 0.25f) {
@@ -25,7 +25,7 @@ public class ImageControlHandler : VEControlHandler {
         }
 	}
 
-	public override void OnPointerMove(PointerMoveEvent evt) {
+	internal override void OnPointerMove(PointerMoveEvent evt) {
 		base.OnPointerMove(evt);
 
         if (IsRightClicking) {
@@ -52,7 +52,7 @@ public class ImageControlHandler : VEControlHandler {
         }
 	}
 
-	public override void OnWheelAction(WheelEvent evt) {
+	internal override void OnWheelAction(WheelEvent evt) {
 		base.OnWheelAction(evt);
 
         if (IsPointerInside && evt.delta.y != 0.0f) {

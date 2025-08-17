@@ -2,7 +2,7 @@
 
 using UnityEngine.UIElements;
 
-public class VEControlHandler {
+internal class VEControlHandler {
 
     public VisualElement ControlledElement { get; protected set; }
     public bool IsPointerInside { get; protected set; }
@@ -11,7 +11,7 @@ public class VEControlHandler {
     public bool IsRightClicking => (PressedButtons & 2) == 2;
     public bool IsMiddleClicking => (PressedButtons & 4) == 4;
 
-    public VEControlHandler(VisualElement element) {
+    internal VEControlHandler(VisualElement element) {
         ControlledElement = element;
 
         ControlledElement.RegisterCallback<PointerDownEvent>(OnPointerDown);
@@ -22,27 +22,27 @@ public class VEControlHandler {
         ControlledElement.RegisterCallback<WheelEvent>(OnWheelAction);
     }
 
-    public virtual void OnPointerDown(PointerDownEvent evt) {
+    internal virtual void OnPointerDown(PointerDownEvent evt) {
         UpdateValues(IsPointerInside, evt.pressedButtons);
     }
 
-    public virtual void OnPointerUp(PointerUpEvent evt) {
+    internal virtual void OnPointerUp(PointerUpEvent evt) {
         UpdateValues(IsPointerInside, evt.pressedButtons);
     }
 
-    public virtual void OnPointerMove(PointerMoveEvent evt) {
+    internal virtual void OnPointerMove(PointerMoveEvent evt) {
         UpdateValues(IsPointerInside, evt.pressedButtons);
     }
 
-    public virtual void OnPointerEnter(PointerEnterEvent evt) {
+    internal virtual void OnPointerEnter(PointerEnterEvent evt) {
         UpdateValues(true, evt.pressedButtons);
     }
 
-    public virtual void OnPointerLeave(PointerLeaveEvent evt) {
+    internal virtual void OnPointerLeave(PointerLeaveEvent evt) {
         UpdateValues(false, evt.pressedButtons);
     }
 
-    public virtual void OnWheelAction(WheelEvent evt) {
+    internal virtual void OnWheelAction(WheelEvent evt) {
         UpdateValues(IsPointerInside, evt.pressedButtons);
     }
 

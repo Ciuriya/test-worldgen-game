@@ -4,15 +4,18 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-public partial class TilemapPainterEditor : EditorWindow {
+internal partial class TilemapPainterEditor : EditorWindow {
 
     private enum Tools {
         Brush,
         Erase
     }
 
-    public static string STYLESHEET_PATH = "Assets/Art/USS/Editor/TilemapPainterEditorStyleSheet.uss";
-    public static string TOOL_ICON_PATH = "Assets/Art/Icons/";
+// we don't need a RuntimeInitializeOnLoad function, this is an editor window...
+#pragma warning disable UDR0001
+	internal static string STYLESHEET_PATH = "Assets/Art/USS/Editor/TilemapPainterEditorStyleSheet.uss";
+	internal static string TOOL_ICON_PATH = "Assets/Art/Icons/";
+#pragma warning restore UDR0001
 
     [MenuItem("Custom/Tilemap Painter")]
     public new static void Show() {
