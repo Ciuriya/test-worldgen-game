@@ -70,8 +70,8 @@ internal class TilemapPainterViewport : VisualElement {
 
         _contentArea.style.width = defaultWidth;
         _contentArea.style.height = defaultHeight;
-        _contentArea.transform.scale = Vector3.one;
-        _contentArea.transform.position = Vector3.zero;
+        _contentArea.style.scale = Vector3.one;
+        _contentArea.style.translate = Vector3.zero;
     }
 
     internal void Resize(int newImageSize) {

@@ -30,7 +30,7 @@ internal class ImageControlHandler : VEControlHandler {
 
         if (IsRightClicking) {
             // we need the delta between what we can see and the edge
-            Vector3 newPos = ControlledElement.transform.position + evt.deltaPosition;
+            Vector3 newPos = ControlledElement.resolvedStyle.translate + evt.deltaPosition;
             Vector2 imageBounds = new Vector2(ControlledElement.worldBound.width, ControlledElement.worldBound.height);
 
             // remove half the content rect so that it's always at least halfway visible in the container
@@ -43,7 +43,7 @@ internal class ImageControlHandler : VEControlHandler {
                 newPos.z
             );
 
-            ControlledElement.transform.position = newPos;
+            ControlledElement.style.translate = newPos;
         }
 
         if (IsLeftClicking && EditorApplication.timeSinceStartup - lastDragClickTime > 0.05f) {
@@ -59,8 +59,8 @@ internal class ImageControlHandler : VEControlHandler {
             float factor = evt.delta.y < 0 ? 1f + ZOOM_STEP : 1f - ZOOM_STEP;
 
             // translate it as well so that it stays centered
-            ControlledElement.transform.position *= factor;
-            ControlledElement.transform.scale *= factor;
+            ControlledElement.style.translate = ControlledElement.resolvedStyle.translate * factor;
+            ControlledElement.style.scale = ControlledElement.resolvedStyle.scale.value * factor;
 
             evt.StopPropagation();
         }
