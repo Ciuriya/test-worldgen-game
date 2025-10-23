@@ -43,8 +43,8 @@ public class Zone {
 
     public void FindDistanceFromEdge(Rect bounds, out float xDist, out float yDist) {
         // finding nearest edge distance
-        xDist = bounds.width / 2 - Mathf.Abs(Center.x - bounds.width / 2);
-        yDist = bounds.height / 2 - Mathf.Abs(Center.y - bounds.height / 2);
+        xDist = Mathf.Abs(Mathf.Abs(Center.x) - Mathf.Abs(bounds.width / 2));
+        yDist = Mathf.Abs(Mathf.Abs(Center.y) - Mathf.Abs(bounds.height / 2));
     }
 
     public int FindDistanceToNearestZone(List<Zone> zonesToCheck) {

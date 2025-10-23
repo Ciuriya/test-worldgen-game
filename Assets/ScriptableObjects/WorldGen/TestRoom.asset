@@ -70,7 +70,7 @@ MonoBehaviour:
     DefaultColor: {r: 0, g: 0, b: 0, a: 0}
     DefaultTileSize: 0.1
     CenterPositionInPercent: {x: 50, y: 50}
-    ShouldRepeat: 0
+    ShouldRepeat: 1
     TextureWrapMode: 0
   PickDifferentIndexMaps: 0
   PickSequentially: 1

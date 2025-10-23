@@ -125,7 +125,7 @@ public class World {
                             }
     }
 
-    // todo: a damn solid pass on this
+    // todo: a damn solid pass on this (maybe even a rewrite...)
     private void ApplyGrammarRules(List<GraphGrammarRule> grammarRules) {
         foreach (GraphGrammarRule rule in grammarRules) {
             GrammarInput input = rule.Input;
