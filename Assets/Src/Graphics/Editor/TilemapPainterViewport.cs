@@ -60,13 +60,15 @@ internal class TilemapPainterViewport : VisualElement {
         // the viewport is supposed to be square, but due to tiny rounding errors
         // we cannot have pixel-perfect matching width/height
         // nonetheless, we still assume a square viewport
-        float defaultWidth = contentRect.width;
-        float defaultHeight = contentRect.height;
+        float defaultWidth = _imageSize;
+        float defaultHeight = _imageSize;
 
-        if (_texture.width > _texture.height)
-            defaultHeight *= _texture.height / (float) _texture.width;
-        else if (_texture.width < _texture.height)
-            defaultWidth *= _texture.width / (float) _texture.height;
+        if (_texture) {
+            if (_texture.width > _texture.height)
+                defaultHeight *= _texture.height / (float) _texture.width;
+            else if (_texture.width < _texture.height)
+                defaultWidth *= _texture.width / (float) _texture.height;
+        }
 
         _contentArea.style.width = defaultWidth;
         _contentArea.style.height = defaultHeight;

@@ -120,9 +120,9 @@ internal partial class TilemapPainterEditor {
 
             this.drawnCells = drawnCells;
 
-            drawViewport.OnTextureChange(output, 0);
+            drawViewport.OnTextureChange(output, output.width);
             nameField.SetValueWithoutNotify(evt.newValue.name);
-            OnDrawTextureResize?.Invoke(output.width);
+            drawViewport.schedule.Execute(() => OnDrawTextureResize?.Invoke(output.width));
 
             Debug.Log($"Loaded Index Map: {indexMap.name}");
         });
@@ -147,7 +147,6 @@ internal partial class TilemapPainterEditor {
         drawTextureSizeField.SetValueWithoutNotify(newDrawImageSize);
 
         panel.style.width = new Length(newDrawImageSize + 10, LengthUnit.Pixel);
-        drawViewport.Resize(newDrawImageSize);
 
         Repaint();
     }
@@ -298,6 +297,8 @@ internal partial class TilemapPainterEditor {
             for (int x = 0; x < width; x++) {
                 int pixel = (height - 1 - y) * width + x;
                 Color32 pack = indexPixels[pixel];
+
+                if (pack.a == 0) continue;
 
                 int atlasId = (pack.g << 8) | pack.r;
                 Vector2Int atlasCell = new Vector2Int(atlasId % atlasCellsX, atlasId / atlasCellsX);

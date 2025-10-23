@@ -65,13 +65,13 @@ MonoBehaviour:
     TextureWrapMode: 0
   FloorIndexMaps:
   - AtlasTexture: {fileID: 2800000, guid: fa2a948f1b41b8647a11e29126e9cf0e, type: 3}
-    AtlasGridSize: 16
-    IndexMapTexture: {fileID: 2800000, guid: 37956f30d2c539046a0c17dd760f968e, type: 3}
+    AtlasGridSize: 8
+    IndexMapTexture: {fileID: 2800000, guid: c7ea9af85cdd83440aff0d2ad292b10b, type: 3}
     DefaultColor: {r: 0, g: 0, b: 0, a: 0}
-    DefaultTileSize: 0.1
+    DefaultTileSize: 0.05
     CenterPositionInPercent: {x: 50, y: 50}
     ShouldRepeat: 1
-    TextureWrapMode: 0
+    TextureWrapMode: 1
   PickDifferentIndexMaps: 0
   PickSequentially: 1
   MergeWalls: 1
