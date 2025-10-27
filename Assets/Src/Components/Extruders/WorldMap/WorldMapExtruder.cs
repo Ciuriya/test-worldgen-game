@@ -8,6 +8,7 @@ using Unity.Jobs;
 using System.Collections.Generic;
 using System.Collections;
 using System;
+using Unity.Burst;
 
 public class WorldMapExtruder : Extruder {
 
@@ -20,18 +21,17 @@ public class WorldMapExtruder : Extruder {
     private JobHandle _currentJob;
     private WorldMapMeshData[] _currentMeshDataArray;
     private NativeArray<MeshData> _currentResultArray;
-    internal static readonly NativeArray<ushort> ZoneTriangles = new NativeArray<ushort>(
-        new ushort[] { 1, 2, 0, 3, 2, 1 }, Allocator.Persistent);
-    internal static readonly NativeArray<ushort> NeighborTriangles = new NativeArray<ushort>(
-        new ushort[] { 0, 2, 1, 1, 2, 3 }, Allocator.Persistent);
-    internal static readonly NativeArray<ushort> FlatTriangles = new NativeArray<ushort>(
-        new ushort[] { 1, 2, 0, 3, 2, 1, 0, 2, 1, 1, 2, 3 }, Allocator.Persistent);
+    internal static NativeArray<ushort> ZoneTriangles;
+    internal static NativeArray<ushort> NeighborTriangles;
+    internal static NativeArray<ushort> FlatTriangles;
 
     public override void Extrude() {
         if (!CanExtrude()) return;
 
         IsGenerating = true;
         GenerationTime = Time.realtimeSinceStartupAsDouble;
+        
+        InitStaticTris();
         _helper = new WorldMapMeshHelper(World);
         _helper.Setup();
 
@@ -95,6 +95,9 @@ public class WorldMapExtruder : Extruder {
                                                            out NativeArray<float3> positions);
 
         var job = new CreateWorldMapMeshJob() {
+            ZoneTriangles = ZoneTriangles,
+            NeighborTriangles = NeighborTriangles,
+            FlatTriangles = FlatTriangles,
             ZoneArray = zoneArray,
             NeighborArray = neighborArray,
             MeshDataKeys = keys,
@@ -255,5 +258,19 @@ public class WorldMapExtruder : Extruder {
 
         if (FlatTriangles.IsCreated)
             FlatTriangles.Dispose();
+    }
+
+    [BurstDiscard]
+    private static void InitStaticTris() {
+        if (ZoneTriangles.IsCreated || NeighborTriangles.IsCreated || FlatTriangles.IsCreated)
+            return;
+
+        ZoneTriangles = new NativeArray<ushort>(6, Allocator.Persistent);
+        NeighborTriangles = new NativeArray<ushort>(6, Allocator.Persistent);
+        FlatTriangles = new NativeArray<ushort>(12, Allocator.Persistent);
+
+        ZoneTriangles.CopyFrom(new ushort[] { 1, 2, 0, 3, 2, 1 });
+        NeighborTriangles.CopyFrom(new ushort[] { 0, 2, 1, 1, 2, 3 });
+        FlatTriangles.CopyFrom(new ushort[] { 1, 2, 0, 3, 2, 1, 0, 2, 1, 1, 2, 3 });
     }
 }

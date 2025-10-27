@@ -19,6 +19,12 @@ internal struct JobMeshDataKeys {
 [BurstCompile(FloatPrecision.Low, FloatMode.Fast, CompileSynchronously = true)]
 internal struct CreateWorldMapMeshJob : IJobParallelForBatch {
 
+    [ReadOnly] internal NativeArray<ushort> ZoneTriangles;
+
+    [ReadOnly] internal NativeArray<ushort> NeighborTriangles;
+
+    [ReadOnly] internal NativeArray<ushort> FlatTriangles;
+
     [DeallocateOnJobCompletion] [ReadOnly] 
     internal NativeArray<JobMeshInfo> ZoneArray;
 
@@ -58,9 +64,6 @@ internal struct CreateWorldMapMeshJob : IJobParallelForBatch {
                                                      out NativeArray<ushort> zoneTriangles, 
                                                      out NativeArray<ushort> neighborTriangles);
 
-        // set descriptor layout for vertices
-        meshData.SetVertexBufferParams(positions.Length, Layout);
-
 		// calc normals
 		// only using the first sub-mesh for normal calc
 		CalculateNormals(positions,
@@ -89,11 +92,11 @@ internal struct CreateWorldMapMeshJob : IJobParallelForBatch {
                               out NativeArray<ushort> flatTriangles, out NativeArray<ushort> zoneTriangles, 
                               out NativeArray<ushort> neighborTriangles) {
         if (zoneInfo.IsEdge) {   
-            flatTriangles = WorldMapExtruder.FlatTriangles;
-            zoneTriangles = WorldMapExtruder.ZoneTriangles;
+            flatTriangles = FlatTriangles;
+            zoneTriangles = ZoneTriangles;
 
             if (neighborInfo.IsValid)
-                neighborTriangles = WorldMapExtruder.NeighborTriangles;
+                neighborTriangles = NeighborTriangles;
             else neighborTriangles = EmptyArray;
         } else {
             JobTriangulator triangulator = new JobTriangulator(points);

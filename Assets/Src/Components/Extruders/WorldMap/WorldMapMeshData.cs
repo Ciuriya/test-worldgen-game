@@ -24,6 +24,7 @@ internal class WorldMapMeshData {
         _helper = helper;
         _meshDefaultMaterial = meshDefaultMaterial;
         _meshDataArray = AllocateWritableMeshData(1);
+        _meshDataArray[0].SetVertexBufferParams(positions.Length, WorldMapMeshHelper.Layout);
         _globalRef = WorldMapMeshHelper.RotateVertexToMatchParentRotation(new Vector3(center.x, center.y, 0), _currentTransform);
 
         for (int i = 0; i < positions.Length; ++i)
