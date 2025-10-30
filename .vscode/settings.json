@@ -63,5 +63,9 @@
         "**/Library/**": true,
         "**/obj/**": true
     },
-    "dotnet.defaultSolution": "test-worldgen-game.sln"
+    "dotnet.defaultSolution": "test-worldgen-game.sln",
+    "dotrush.roslyn.projectOrSolutionFiles": [
+        "d:\\Personal Unity Projects\\test-worldgen-game\\test-worldgen-game.sln"
+    ],
+    "chatgpt.commentCodeLensEnabled": false
 }
