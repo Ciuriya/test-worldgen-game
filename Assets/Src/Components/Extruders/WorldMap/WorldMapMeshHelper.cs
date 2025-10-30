@@ -13,9 +13,10 @@ internal class WorldMapMeshHelper {
 		public Corner CornerTwo;
 
 		public override bool Equals(object obj) {
-			if (obj is MeshEdge edge) 
-				return CornerOne == edge.CornerOne && CornerTwo == edge.CornerTwo;
-			else return false;
+            if (obj is MeshEdge edge)
+                return CornerOne == edge.CornerOne && CornerTwo == edge.CornerTwo;
+			
+            return false;
     	}
 
 		public override int GetHashCode() => HashCode.Combine(CornerOne.GetHashCode(), CornerTwo.GetHashCode());

@@ -91,20 +91,20 @@ internal struct CreateWorldMapMeshJob : IJobParallelForBatch {
                               NativeSlice<float2> points,
                               out NativeArray<ushort> flatTriangles, out NativeArray<ushort> zoneTriangles, 
                               out NativeArray<ushort> neighborTriangles) {
-        if (zoneInfo.IsEdge) {   
-            flatTriangles = FlatTriangles;
-            zoneTriangles = ZoneTriangles;
-
-            if (neighborInfo.IsValid)
-                neighborTriangles = NeighborTriangles;
-            else neighborTriangles = EmptyArray;
-        } else {
+        if (!zoneInfo.IsEdge)
+        {
             JobTriangulator triangulator = new JobTriangulator(points);
 
             flatTriangles = triangulator.Triangulate(Allocator.Temp).AsArray();
             zoneTriangles = flatTriangles;
             neighborTriangles = EmptyArray;
+
+            return;
         }
+        
+        flatTriangles = FlatTriangles;
+        zoneTriangles = ZoneTriangles;
+        neighborTriangles = neighborInfo.IsValid ? NeighborTriangles : EmptyArray;
     }
 
     private void BuildVertices(JobMeshInfo zoneInfo, JobMeshInfo neighborInfo,

@@ -15,7 +15,7 @@ internal struct ZoneMeshInfo {
 [Serializable]
 [BurstCompile]
 internal struct JobMeshInfo {
-    public bool IsEdge;
+    internal bool IsEdge;
     internal float3 Center;
     internal int EdgeIndex;
     internal UVModifiers UVModifiers;

@@ -84,13 +84,10 @@ internal class WorldMapMeshData {
     internal MeshDataArray GetMeshDataArray() => _meshDataArray;
     internal bool IsEdge() => _zone.Info.IsEdge;
     internal Material[] GetMaterials() {
-        bool hasValidNeighbor = IsEdge() && _neighbor.Info.IsValid;
-        Material[] materials = new Material[hasValidNeighbor ? 2 : 1];
-
-        materials[0] = _zone.Material;
-        if (hasValidNeighbor) materials[1] = _neighbor.Material;
-
-        return materials;
+        if (IsEdge() && _neighbor.Info.IsValid)
+            return new Material[] { _zone.Material, _neighbor.Material };
+            
+        return new Material[] { _zone.Material };
     }
 
     private Material GetMaterial(ZoneMeshInfo zoneInfo, ZoneRoomWrapper wrapper, bool isNeighbor) {
