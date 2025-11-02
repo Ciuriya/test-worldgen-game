@@ -9,7 +9,11 @@ namespace Delaunay
 		
 	public sealed class Site: ICoord, IComparable
 	{
-		private static Stack<Site> _pool = new Stack<Site> ();
+		private static Stack<Site> _pool;
+
+		[RuntimeInitializeOnLoadMethod]
+		private static void ResetVariables() => _pool = new Stack<Site>();
+
 		public static Site Create (Vector2 p, uint index, float weight, uint color)
 		{
 			if (_pool.Count > 0) {

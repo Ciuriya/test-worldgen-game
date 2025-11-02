@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using PendingName.Tilemap;
 using PendingName.WorldGen;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
@@ -154,52 +153,6 @@ namespace PendingName.Extruders.WorldMap {
                 bounds.Encapsulate(positions[i]);
 
             return bounds;
-        }
-
-        [BurstCompile]
-        internal static void CalculateNormals(NativeSlice<float3> positions, NativeArray<ushort> triangles,
-                                              out float3 normal, out half4 tangent) {
-            float3 nSum = float3.zero;
-            float3 tSum = float3.zero;
-
-            for (int i = 0; i < triangles.Length; i += 3) {
-                float3 p0 = positions[triangles[i]];
-                float3 p1 = positions[triangles[i + 1]];
-                float3 p2 = positions[triangles[i + 2]];
-
-                // area-weighted face normal
-                float3 face = math.cross(p1 - p0, p2 - p0);
-                nSum += face;
-
-                // use the first edge as a tangent candidate
-                tSum += p1 - p0;
-            }
-
-            normal = math.normalize(nSum);
-
-            float3 tan3 = math.normalize(math.project(tSum, normal));
-            tangent = new half4(new float4(tan3, 1f)); // −1 to flip
-        }
-
-        [BurstCompile]
-        internal static half2 CalculateUVs(bool isEdge, float3 vertex, UVModifiers mods) {
-            vertex += mods.UVOffset;
-            float uValue = vertex.x;
-
-            if (isEdge) {
-                float length = math.distance(new float2(mods.PointOne.x, mods.PointOne.z),
-                                             new float2(mods.PointTwo.x, mods.PointTwo.z));
-
-                uValue = math.distance(new float2(vertex.x, vertex.z),
-                                       new float2(mods.PointOne.x, mods.PointOne.z));
-
-                if (mods.FlipUV) uValue = length - uValue;
-            }
-
-            return new half2(
-                new half((uValue / mods.TileSize.x) + mods.StartOffset),
-                new half((isEdge ? vertex.y : vertex.z) / mods.TileSize.y)
-            );
         }
 
         internal static bool ShouldFlipUV(float3 a, float3 b, float3 interior) {

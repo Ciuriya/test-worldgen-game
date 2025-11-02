@@ -16,6 +16,9 @@ namespace PendingName.Core {
         private List<CoreSystem> _systems;
         private string _sceneName;
 
+        [RuntimeInitializeOnLoadMethod]
+        private static void ResetInstance() => _instance = null;
+
         void Start() {
             if (_instance != null) {
                 Destroy(this);

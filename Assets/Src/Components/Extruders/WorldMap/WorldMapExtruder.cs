@@ -32,7 +32,6 @@ namespace PendingName.Extruders.WorldMap {
             IsGenerating = true;
             GenerationTime = Time.realtimeSinceStartupAsDouble;
 
-            InitStaticTris();
             _helper = new WorldMapMeshHelper(World);
             _helper.Setup();
 
@@ -263,11 +262,8 @@ namespace PendingName.Extruders.WorldMap {
                 FlatTriangles.Dispose();
         }
 
-        [BurstDiscard]
+        [BurstDiscard] [RuntimeInitializeOnLoadMethod]
         private static void InitStaticTris() {
-            if (ZoneTriangles.IsCreated || NeighborTriangles.IsCreated || FlatTriangles.IsCreated)
-                return;
-
             ZoneTriangles = new NativeArray<ushort>(6, Allocator.Persistent);
             NeighborTriangles = new NativeArray<ushort>(6, Allocator.Persistent);
             FlatTriangles = new NativeArray<ushort>(12, Allocator.Persistent);

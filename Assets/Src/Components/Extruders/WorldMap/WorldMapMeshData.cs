@@ -33,7 +33,7 @@ namespace PendingName.Extruders.WorldMap {
 
             _zone = new ZoneMeshInfo {
                 Parent = parent,
-                Name = zone.Room ? zone.Room.name : "No Zone",
+                Name = zone.Room ? zone.Room.DisplayName : "No Zone",
                 Info = new JobMeshInfo {
                     IsEdge = false,
                     Center = center,

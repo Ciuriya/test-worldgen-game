@@ -25,7 +25,13 @@ namespace Delaunay
 		 */
 	public sealed class Edge
 	{
-		private static Stack<Edge> _pool = new Stack<Edge> ();
+		private static Stack<Edge> _pool;
+
+		[RuntimeInitializeOnLoadMethod]
+		private static void ResetVariables() {
+			_pool = new Stack<Edge>();
+			_nedges = 0;
+		}
 
 		/**
 			 * This is the only way to create a new Edge 
@@ -138,7 +144,7 @@ namespace Delaunay
 	                                         _clippedVertices [Side.RIGHT]);
 		}
 
-		private static int _nedges = 0;
+		private static int _nedges;
 			
 		public static readonly Edge DELETED = new Edge ();
 			

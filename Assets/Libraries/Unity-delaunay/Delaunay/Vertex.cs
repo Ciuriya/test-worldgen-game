@@ -9,8 +9,15 @@ namespace Delaunay
 	public sealed class Vertex: ICoord
 	{
 		public static readonly Vertex VERTEX_AT_INFINITY = new Vertex (float.NaN, float.NaN);
-		
-		private static Stack<Vertex> _pool = new Stack<Vertex> ();
+
+		private static Stack<Vertex> _pool;
+
+		[RuntimeInitializeOnLoadMethod]
+		private static void ResetVariables() {
+			_pool = new Stack<Vertex>();
+			_nvertices = 0;
+		}
+
 		private static Vertex Create (float x, float y)
 		{
 			if (float.IsNaN (x) || float.IsNaN (y)) {
@@ -24,7 +31,7 @@ namespace Delaunay
 		}
 
 
-		private static int _nvertices = 0;
+		private static int _nvertices;
 		
 		private Vector2 _coord;
 		public Vector2 Coord {

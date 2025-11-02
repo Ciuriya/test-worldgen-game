@@ -7,11 +7,13 @@ using Delaunay.Utils;
 
 namespace Delaunay
 {
-
-	
 	public sealed class Halfedge: Delaunay.Utils.IDisposable
 	{
-		private static Stack<Halfedge> _pool = new Stack<Halfedge> ();
+		private static Stack<Halfedge> _pool;
+
+		[RuntimeInitializeOnLoadMethod]
+		private static void ResetVariables() => _pool = new Stack<Halfedge>();
+		
 		public static Halfedge Create (Edge edge, Nullable<Side> lr)
 		{
 			if (_pool.Count > 0) {

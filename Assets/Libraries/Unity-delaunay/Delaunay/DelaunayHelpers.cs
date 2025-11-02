@@ -9,7 +9,10 @@ namespace Delaunay
 
 	public class Node
 	{
-		public static Stack<Node> pool = new Stack<Node> ();
+		public static Stack<Node> pool;
+
+		[RuntimeInitializeOnLoadMethod]
+		private static void ResetVariables() => pool = new Stack<Node>();
 		
 		public Node parent;
 		public int treeSize;
