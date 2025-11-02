@@ -1,39 +1,43 @@
 ﻿using System.Collections.Generic;
+using PendingName.Tilemap;
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "WorldGen/Room")]
-public class Room : ScriptableObject {
-
-    [Tooltip("The name displayed whenever this room's name is shown to the user")]
-    public string DisplayName;
-
-    [Tooltip("The material representing this room to the user")]
-    public Material Material;
-
-    [Tooltip("The list of possible index maps used to texture this room's walls.\nPicked according to PickSequentially.")]
-    public List<IndexMapWrapper> WallIndexMaps;
-
-    [Tooltip("The list of possible index maps used to texture this room's floor.\nPicked according to PickSequentially.")]
-    public List<IndexMapWrapper> FloorIndexMaps;
-
-    [Tooltip("Should a different index map be picked for each wall?")]
-    public bool PickDifferentIndexMaps;
-
-    [Tooltip("Should we always pick in order or pick randomly?")]
-    public bool PickSequentially;
-
-    [Tooltip("Should all walls be treated as one large wall?")]
-    public bool MergeWalls;
-
-    public IndexMapWrapper GetWallIndexMap(int index = 0) {
-        if (WallIndexMaps.Count == 0) return default;
-
-        if (!PickSequentially) index = Random.Range(0, WallIndexMaps.Count);
-        else if (WallIndexMaps.Count <= index) return default;
-
-        return WallIndexMaps[index];
-    }
+namespace PendingName.WorldGen {
     
-    public IndexMapWrapper GetFloorIndexMap() =>
-        FloorIndexMaps.Count > 0 ? FloorIndexMaps[Random.Range(0, FloorIndexMaps.Count)] : default;
+    [CreateAssetMenu(menuName = "WorldGen/Room")]
+    public class Room : ScriptableObject {
+
+        [Tooltip("The name displayed whenever this room's name is shown to the user")]
+        public string DisplayName;
+
+        [Tooltip("The material representing this room to the user")]
+        public Material Material;
+
+        [Tooltip("The list of possible index maps used to texture this room's walls.\nPicked according to PickSequentially.")]
+        public List<IndexMapWrapper> WallIndexMaps;
+
+        [Tooltip("The list of possible index maps used to texture this room's floor.\nPicked according to PickSequentially.")]
+        public List<IndexMapWrapper> FloorIndexMaps;
+
+        [Tooltip("Should a different index map be picked for each wall?")]
+        public bool PickDifferentIndexMaps;
+
+        [Tooltip("Should we always pick in order or pick randomly?")]
+        public bool PickSequentially;
+
+        [Tooltip("Should all walls be treated as one large wall?")]
+        public bool MergeWalls;
+
+        public IndexMapWrapper GetWallIndexMap(int index = 0) {
+            if (WallIndexMaps.Count == 0) return default;
+
+            if (!PickSequentially) index = Random.Range(0, WallIndexMaps.Count);
+            else if (WallIndexMaps.Count <= index) return default;
+
+            return WallIndexMaps[index];
+        }
+
+        public IndexMapWrapper GetFloorIndexMap() =>
+            FloorIndexMaps.Count > 0 ? FloorIndexMaps[Random.Range(0, FloorIndexMaps.Count)] : default;
+    }
 }

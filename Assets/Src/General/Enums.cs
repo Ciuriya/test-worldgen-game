@@ -1,9 +1,11 @@
-public class Enums {
+namespace PendingName.Core {
+    public class Enums {
 
-    public enum ViewEnum {
-        None = 0,
+        public enum ViewEnum {
+            None = 0,
 
-        LoadingScreen,
-        MainMenu
+            LoadingScreen,
+            MainMenu
+        }
     }
 }

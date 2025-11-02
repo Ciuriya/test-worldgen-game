@@ -1,50 +1,51 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class LoadingScreenViewController : ViewController {
+namespace PendingName.UI {
+    public class LoadingScreenViewController : ViewController {
+        public LoadingScreenView View => BaseView as LoadingScreenView;
 
-    public LoadingScreenView View => BaseView as LoadingScreenView;
+        private float _lastDotIncreaseTime;
+        private int _currentDotCount;
 
-    private float _lastDotIncreaseTime;
-    private int _currentDotCount;
+        public LoadingScreenViewController() : base() {
+            BaseView = new LoadingScreenView(this);
 
-    public LoadingScreenViewController() : base() {
-        BaseView = new LoadingScreenView(this);
+            _lastDotIncreaseTime = Time.time;
 
-        _lastDotIncreaseTime = Time.time;
+            LoadMainMenuScene();
+        }
 
-        LoadMainMenuScene();
-    }
-
-    private void LoadMainMenuScene() {
-        int sceneToLoad = 1;
+        private void LoadMainMenuScene() {
+            int sceneToLoad = 1;
 
 #if UNITY_EDITOR
-        if (EditorStartFromLoading.OtherScene > 0)
-            sceneToLoad = EditorStartFromLoading.OtherScene;
+            if (EditorStartFromLoading.OtherScene > 0)
+                sceneToLoad = EditorStartFromLoading.OtherScene;
 #endif
 
-        SceneManager.LoadScene(sceneToLoad);
-    }
+            SceneManager.LoadScene(sceneToLoad);
+        }
 
-    public override void Update() {
-        base.Update();
+        public override void Update() {
+            base.Update();
 
-        UpdateLoadingText();
-    }
+            UpdateLoadingText();
+        }
 
-    private void UpdateLoadingText() {
-        if (Time.time - _lastDotIncreaseTime >= 1.0f) {
-            _lastDotIncreaseTime = Time.time;
-            _currentDotCount++;
+        private void UpdateLoadingText() {
+            if (Time.time - _lastDotIncreaseTime >= 1.0f) {
+                _lastDotIncreaseTime = Time.time;
+                _currentDotCount++;
 
-            if (_currentDotCount == 4) _currentDotCount = 0;
+                if (_currentDotCount == 4) _currentDotCount = 0;
 
-            string loadingText = "Loading";
-            for (int i = 0; i < _currentDotCount; i++)
-                loadingText += ".";
+                string loadingText = "Loading";
+                for (int i = 0; i < _currentDotCount; i++)
+                    loadingText += ".";
 
-            View.UpdateLoadingText(loadingText);
+                View.UpdateLoadingText(loadingText);
+            }
         }
     }
 }

@@ -1,28 +1,30 @@
 using TMPro;
 using UnityEngine;
-using static Enums;
+using PendingName.Core;
+using static PendingName.Core.Enums;
 
-public class LoadingScreenView : View {
+namespace PendingName.UI {
+    public class LoadingScreenView : View {
+        public override ViewEnum ViewEnum => ViewEnum.LoadingScreen;
+        public LoadingScreenViewController ViewController => BaseViewController as LoadingScreenViewController;
+        protected override GameObject ViewPrefab => GameCore.Instance.GetSystem<PrefabSystem>().GetPrefab("LoadingScreenUI");
 
-    public override ViewEnum ViewEnum => ViewEnum.LoadingScreen;
-    public LoadingScreenViewController ViewController => BaseViewController as LoadingScreenViewController;
-    protected override GameObject ViewPrefab => GameCore.Instance.GetSystem<PrefabSystem>().GetPrefab("LoadingScreenUI");
+        private TMP_Text _loadingText;
 
-    private TMP_Text _loadingText;
+        public LoadingScreenView(ViewController viewController) : base(viewController) { }
 
-    public LoadingScreenView(ViewController viewController) : base(viewController) { }
+        public override void LoadElements() {
+            base.LoadElements();
 
-    public override void LoadElements() {
-        base.LoadElements();
+            _loadingText = ViewRoot.FindChild<TMP_Text>("LoadingText");
+        }
 
-        _loadingText = ViewRoot.FindChild<TMP_Text>("LoadingText");
-    }
+        public override void Start() {
+            base.Start();
+        }
 
-    public override void Start() {
-        base.Start();
-    }
-
-    public void UpdateLoadingText(string text) {
-        _loadingText.SetText(text);
+        public void UpdateLoadingText(string text) {
+            _loadingText.SetText(text);
+        }
     }
 }

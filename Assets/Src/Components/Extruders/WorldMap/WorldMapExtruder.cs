@@ -2,275 +2,279 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using Unity.Collections;
 using Unity.Mathematics;
-using static WorldMapMeshHelper;
 using static UnityEngine.Mesh;
 using Unity.Jobs;
 using System.Collections.Generic;
 using System.Collections;
 using System;
 using Unity.Burst;
+using PendingName.WorldGen;
 
-public class WorldMapExtruder : Extruder {
+namespace PendingName.Extruders.WorldMap {
+    public class WorldMapExtruder : Extruder {
 
-    [Tooltip("The world to extrude")]
-    public World World;
-    public bool IsGenerating { get; private set; }
-    public double GenerationTime { get; private set; }
+        [Tooltip("The world to extrude")]
+        public World World;
+        public bool IsGenerating { get; private set; }
+        public double GenerationTime { get; private set; }
 
-    private WorldMapMeshHelper _helper = null;
-    private JobHandle _currentJob;
-    private WorldMapMeshData[] _currentMeshDataArray;
-    private NativeArray<MeshData> _currentResultArray;
-    internal static NativeArray<ushort> ZoneTriangles;
-    internal static NativeArray<ushort> NeighborTriangles;
-    internal static NativeArray<ushort> FlatTriangles;
+        private WorldMapMeshHelper _helper = null;
+        private JobHandle _currentJob;
+        private WorldMapMeshData[] _currentMeshDataArray;
+        private NativeArray<MeshData> _currentResultArray;
+        internal static NativeArray<ushort> ZoneTriangles;
+        internal static NativeArray<ushort> NeighborTriangles;
+        internal static NativeArray<ushort> FlatTriangles;
 
-    public override void Extrude() {
-        if (!CanExtrude()) return;
+        public override void Extrude() {
+            if (!CanExtrude()) return;
 
-        IsGenerating = true;
-        GenerationTime = Time.realtimeSinceStartupAsDouble;
-        
-        InitStaticTris();
-        _helper = new WorldMapMeshHelper(World);
-        _helper.Setup();
+            IsGenerating = true;
+            GenerationTime = Time.realtimeSinceStartupAsDouble;
 
-        GenerateFloorMeshes();
-    }
-    
-    private void GenerateFloorMeshes() {
-        _currentMeshDataArray = new WorldMapMeshData[World.Zones.Count];
-        NativeArray<JobMeshInfo> zoneDataArray = new NativeArray<JobMeshInfo>(World.Zones.Count, Allocator.TempJob);
-        NativeArray<JobMeshInfo> neighborDataArray = new NativeArray<JobMeshInfo>(World.Zones.Count, Allocator.TempJob);
+            InitStaticTris();
+            _helper = new WorldMapMeshHelper(World);
+            _helper.Setup();
 
-        for (int i = 0; i < World.Zones.Count; ++i) {
-            _currentMeshDataArray[i] = CreateZoneFloorData(World.Zones[i], transform);
-            zoneDataArray[i] = _currentMeshDataArray[i].GetZoneInfo().Info;
-            neighborDataArray[i] = _currentMeshDataArray[i].GetNeighborInfo().Info;
+            GenerateFloorMeshes();
         }
 
-        StartGeneratingMeshes(zoneDataArray, neighborDataArray, false);
-    }
+        private void GenerateFloorMeshes() {
+            _currentMeshDataArray = new WorldMapMeshData[World.Zones.Count];
+            NativeArray<JobMeshInfo> zoneDataArray = new NativeArray<JobMeshInfo>(World.Zones.Count, Allocator.TempJob);
+            NativeArray<JobMeshInfo> neighborDataArray = new NativeArray<JobMeshInfo>(World.Zones.Count, Allocator.TempJob);
 
-    private void FinalizeFloorMeshes() {
-        List<WorldMapMeshData> edgeDataList = new List<WorldMapMeshData>();
+            for (int i = 0; i < World.Zones.Count; ++i) {
+                _currentMeshDataArray[i] = CreateZoneFloorData(World.Zones[i], transform);
+                zoneDataArray[i] = _currentMeshDataArray[i].GetZoneInfo().Info;
+                neighborDataArray[i] = _currentMeshDataArray[i].GetNeighborInfo().Info;
+            }
 
-        for (int i = 0; i < _currentMeshDataArray.Length; ++i) {
-            GameObject floorObject = CreateMesh(_currentMeshDataArray[i]);
-            edgeDataList.AddRange(CreateZoneEdgesData(World.Zones[i], floorObject.transform));
+            StartGeneratingMeshes(zoneDataArray, neighborDataArray, false);
         }
 
-        CleanupAfterGeneratingMeshes();
-        GenerateEdgeMeshes(edgeDataList.ToArray());
-    }
+        private void FinalizeFloorMeshes() {
+            List<WorldMapMeshData> edgeDataList = new List<WorldMapMeshData>();
 
-    private void GenerateEdgeMeshes(WorldMapMeshData[] edgeDataArray) {
-        _currentMeshDataArray = edgeDataArray;
-        NativeArray<JobMeshInfo> zoneDataArray = new NativeArray<JobMeshInfo>(edgeDataArray.Length, Allocator.TempJob);
-        NativeArray<JobMeshInfo> neighborDataArray = new NativeArray<JobMeshInfo>(edgeDataArray.Length, Allocator.TempJob);
+            for (int i = 0; i < _currentMeshDataArray.Length; ++i) {
+                GameObject floorObject = CreateMesh(_currentMeshDataArray[i]);
+                edgeDataList.AddRange(CreateZoneEdgesData(World.Zones[i], floorObject.transform));
+            }
 
-        for (int i = 0; i < edgeDataArray.Length; ++i) {
-            zoneDataArray[i] = _currentMeshDataArray[i].GetZoneInfo().Info;
-            neighborDataArray[i] = _currentMeshDataArray[i].GetNeighborInfo().Info;
+            CleanupAfterGeneratingMeshes();
+            GenerateEdgeMeshes(edgeDataList.ToArray());
         }
 
-        StartGeneratingMeshes(zoneDataArray, neighborDataArray, true);
-    }
+        private void GenerateEdgeMeshes(WorldMapMeshData[] edgeDataArray) {
+            _currentMeshDataArray = edgeDataArray;
+            NativeArray<JobMeshInfo> zoneDataArray = new NativeArray<JobMeshInfo>(edgeDataArray.Length, Allocator.TempJob);
+            NativeArray<JobMeshInfo> neighborDataArray = new NativeArray<JobMeshInfo>(edgeDataArray.Length, Allocator.TempJob);
 
-    private void FinalizeEdgeMeshes() {
-        for (int i = 0; i < _currentMeshDataArray.Length; ++i)
-            CreateMesh(_currentMeshDataArray[i]);
-    }
+            for (int i = 0; i < edgeDataArray.Length; ++i) {
+                zoneDataArray[i] = _currentMeshDataArray[i].GetZoneInfo().Info;
+                neighborDataArray[i] = _currentMeshDataArray[i].GetNeighborInfo().Info;
+            }
 
-    private void StartGeneratingMeshes(NativeArray<JobMeshInfo> zoneArray, NativeArray<JobMeshInfo> neighborArray, bool isEdge) {
-        if (!zoneArray.IsCreated || !neighborArray.IsCreated)
-            return;
+            StartGeneratingMeshes(zoneDataArray, neighborDataArray, true);
+        }
 
-        _currentResultArray = new NativeArray<MeshData>(zoneArray.Length, Allocator.TempJob);
-        for (int i = 0; i < zoneArray.Length; ++i)
-            _currentResultArray[i] = _currentMeshDataArray[i].GetMeshDataArray()[0];
+        private void FinalizeEdgeMeshes() {
+            for (int i = 0; i < _currentMeshDataArray.Length; ++i)
+                CreateMesh(_currentMeshDataArray[i]);
+        }
 
-        BuildMeshPointsAndPositions(_currentMeshDataArray, out NativeArray<JobMeshDataKeys> keys,
-                                                           out NativeArray<float2> points,
-                                                           out NativeArray<float3> positions);
+        private void StartGeneratingMeshes(NativeArray<JobMeshInfo> zoneArray, NativeArray<JobMeshInfo> neighborArray, bool isEdge) {
+            if (!zoneArray.IsCreated || !neighborArray.IsCreated)
+                return;
 
-        var job = new CreateWorldMapMeshJob() {
-            ZoneTriangles = ZoneTriangles,
-            NeighborTriangles = NeighborTriangles,
-            FlatTriangles = FlatTriangles,
-            ZoneArray = zoneArray,
-            NeighborArray = neighborArray,
-            MeshDataKeys = keys,
-            PointsArray = points,
-            PositionsArray = positions,
-            ResultArray = _currentResultArray,
-            EmptyArray = new NativeArray<ushort>(0, Allocator.TempJob)
-        };
+            _currentResultArray = new NativeArray<MeshData>(zoneArray.Length, Allocator.TempJob);
+            for (int i = 0; i < zoneArray.Length; ++i)
+                _currentResultArray[i] = _currentMeshDataArray[i].GetMeshDataArray()[0];
 
-        _currentJob = job.ScheduleBatch(zoneArray.Length, 32);
-        StartCoroutine(WaitForJobToFinish(isEdge));
-    }
+            BuildMeshPointsAndPositions(_currentMeshDataArray, out NativeArray<JobMeshDataKeys> keys,
+                                                               out NativeArray<float2> points,
+                                                               out NativeArray<float3> positions);
 
-    private IEnumerator WaitForJobToFinish(bool isEdge) {
-        while (!_currentJob.IsCompleted)
-            yield return null;
+            var job = new CreateWorldMapMeshJob() {
+                ZoneTriangles = ZoneTriangles,
+                NeighborTriangles = NeighborTriangles,
+                FlatTriangles = FlatTriangles,
+                ZoneArray = zoneArray,
+                NeighborArray = neighborArray,
+                MeshDataKeys = keys,
+                PointsArray = points,
+                PositionsArray = positions,
+                ResultArray = _currentResultArray,
+                EmptyArray = new NativeArray<ushort>(0, Allocator.TempJob)
+            };
 
-        _currentJob.Complete();
+            _currentJob = job.ScheduleBatch(zoneArray.Length, 32);
+            StartCoroutine(WaitForJobToFinish(isEdge));
+        }
 
-        try {
-            if (isEdge) FinalizeEdgeMeshes();
-            else FinalizeFloorMeshes();
-        } catch (Exception ex) {
-            Debug.LogError(ex.Message + "\n" + ex.StackTrace);
+        private IEnumerator WaitForJobToFinish(bool isEdge) {
+            while (!_currentJob.IsCompleted)
+                yield return null;
 
-            if (!isEdge) CleanupAfterGeneratingMeshes();
-        } finally {
-            if (isEdge) { 
-                CleanupAfterGeneratingMeshes();
-                IsGenerating = false;
-                GenerationTime = Time.realtimeSinceStartupAsDouble - GenerationTime;
+            _currentJob.Complete();
+
+            try {
+                if (isEdge) FinalizeEdgeMeshes();
+                else FinalizeFloorMeshes();
+            }
+            catch (Exception ex) {
+                Debug.LogError(ex.Message + "\n" + ex.StackTrace);
+
+                if (!isEdge) CleanupAfterGeneratingMeshes();
+            }
+            finally {
+                if (isEdge) {
+                    CleanupAfterGeneratingMeshes();
+                    IsGenerating = false;
+                    GenerationTime = Time.realtimeSinceStartupAsDouble - GenerationTime;
+                }
             }
         }
-    }
 
-    private WorldMapMeshData CreateZoneFloorData(Zone zone, Transform parent) {
-        int cornerCount = zone.Corners.Count;
-        float2[] points = new float2[cornerCount];
-        float3[] vertices = new float3[cornerCount];
+        private WorldMapMeshData CreateZoneFloorData(Zone zone, Transform parent) {
+            int cornerCount = zone.Corners.Count;
+            float2[] points = new float2[cornerCount];
+            float3[] vertices = new float3[cornerCount];
 
-        for (int i = 0; i < cornerCount; ++i) {
-            points[i] = zone.Corners[i].Coord;
-            vertices[i] = new float3(points[i].x, points[i].y, ExtrusionDepth);
+            for (int i = 0; i < cornerCount; ++i) {
+                points[i] = zone.Corners[i].Coord;
+                vertices[i] = new float3(points[i].x, points[i].y, ExtrusionDepth);
+            }
+
+            WorldMapMeshData data = new WorldMapMeshData(zone, parent, transform, (Vector3)zone.Center,
+                                                         new NativeArray<float2>(points, Allocator.TempJob),
+                                                         new NativeArray<float3>(vertices, Allocator.TempJob),
+                                                         MeshDefaultMaterial, _helper);
+
+            data.SetupFloorMesh(zone);
+
+            return data;
         }
 
-        WorldMapMeshData data = new WorldMapMeshData(zone, parent, transform, (Vector3) zone.Center, 
-                                                     new NativeArray<float2>(points, Allocator.TempJob), 
-                                                     new NativeArray<float3>(vertices, Allocator.TempJob), 
-                                                     MeshDefaultMaterial, _helper);
+        private List<WorldMapMeshData> CreateZoneEdgesData(Zone zone, Transform parent) {
+            int cornerCount = zone.Corners.Count;
+            if (cornerCount == 0) return new();
 
-        data.SetupFloorMesh(zone);
+            List<WorldMapMeshData> meshDataList = new List<WorldMapMeshData>();
 
-        return data;
-    }
+            // generating edges all around
+            for (int i = 0; i < cornerCount; ++i) {
+                Corner cornerOne = zone.Corners[i];
+                Corner cornerTwo = zone.Corners[(i + 1) % cornerCount];
 
-    private List<WorldMapMeshData> CreateZoneEdgesData(Zone zone, Transform parent) {
-        int cornerCount = zone.Corners.Count;
-        if (cornerCount == 0) return new();
+                if (!_helper.CanProcessZoneEdge(cornerOne, cornerTwo)) continue;
 
-        List<WorldMapMeshData> meshDataList = new List<WorldMapMeshData>();
+                Zone neighbor = zone.Neighbors.Find(z => z.Corners.Contains(cornerOne) && z.Corners.Contains(cornerTwo));
 
-        // generating edges all around
-        for (int i = 0; i < cornerCount; ++i) {
-            Corner cornerOne = zone.Corners[i];
-            Corner cornerTwo = zone.Corners[(i + 1) % cornerCount];
+                meshDataList.Add(CreateZoneEdgeData(zone, neighbor, i,
+                                                    _helper.FindLeadingEdgeIndex(neighbor, cornerOne, cornerTwo),
+                                                    parent, cornerOne.Coord, cornerTwo.Coord));
+            }
 
-            if (!_helper.CanProcessZoneEdge(cornerOne, cornerTwo)) continue;
-
-            Zone neighbor = zone.Neighbors.Find(z => z.Corners.Contains(cornerOne) && z.Corners.Contains(cornerTwo));
-
-            meshDataList.Add(CreateZoneEdgeData(zone, neighbor, i, 
-                                                _helper.FindLeadingEdgeIndex(neighbor, cornerOne, cornerTwo),
-                                                parent, cornerOne.Coord, cornerTwo.Coord));
+            return meshDataList;
         }
 
-        return meshDataList;
-    }
-
-    private WorldMapMeshData CreateZoneEdgeData(Zone zone, Zone neighbor, int edgeIndex, int neighborEdgeIndex,
-                                                Transform parent, float2 cornerOne, float2 cornerTwo) {
-        float3[] positions = new float3[4] {
+        private WorldMapMeshData CreateZoneEdgeData(Zone zone, Zone neighbor, int edgeIndex, int neighborEdgeIndex,
+                                                    Transform parent, float2 cornerOne, float2 cornerTwo) {
+            float3[] positions = new float3[4] {
             new float3(cornerOne.x, cornerOne.y, -ExtrusionDepth), // front
             new float3(cornerOne.x, cornerOne.y, ExtrusionDepth), // back
             new float3(cornerTwo.x, cornerTwo.y, -ExtrusionDepth), // front
             new float3(cornerTwo.x, cornerTwo.y, ExtrusionDepth)  // back
         };
 
-        float2[] points = new float2[] { cornerOne, cornerTwo };
-        float3 center = ((cornerOne + cornerTwo) * 0.5f).ConvertTo3D();
+            float2[] points = new float2[] { cornerOne, cornerTwo };
+            float3 center = ((cornerOne + cornerTwo) * 0.5f).ConvertTo3D();
 
-        WorldMapMeshData data = new WorldMapMeshData(zone, parent, transform, center, 
-                                                     new NativeArray<float2>(points, Allocator.TempJob), 
-                                                     new NativeArray<float3>(positions, Allocator.TempJob), 
-                                                     MeshDefaultMaterial, _helper);
+            WorldMapMeshData data = new WorldMapMeshData(zone, parent, transform, center,
+                                                         new NativeArray<float2>(points, Allocator.TempJob),
+                                                         new NativeArray<float3>(positions, Allocator.TempJob),
+                                                         MeshDefaultMaterial, _helper);
 
-        data.SetupEdgeMesh(zone, neighbor, edgeIndex, neighborEdgeIndex);
+            data.SetupEdgeMesh(zone, neighbor, edgeIndex, neighborEdgeIndex);
 
-        return data;
-    }
-
-    private GameObject CreateMesh(WorldMapMeshData data) {
-        float3 extrusionHeight = new float3(0, 0, ExtrusionHeight);
-        extrusionHeight = RotateVertexToMatchParentRotation(extrusionHeight, data.GetTransform());
-
-        // create mesh and load data into it
-        Mesh mesh = new Mesh() { bounds = data.GetZoneInfo().Bounds };
-
-        ApplyAndDisposeWritableMeshData(data.GetMeshDataArray(), mesh, MeshUpdateFlags.DontRecalculateBounds);
-
-        GameObject meshObject = CreateGameObjectFromMesh(mesh, data.GetZoneInfo().Parent, data.GetZoneInfo().Name, data.GetMaterials());
-        meshObject.transform.position += (Vector3) (data.GetGlobalRef() + extrusionHeight);
-
-        data.Dispose();
-
-        return meshObject;
-    }
-
-    private void BuildMeshPointsAndPositions(WorldMapMeshData[] dataArray, out NativeArray<JobMeshDataKeys> keys,
-                                                                           out NativeArray<float2> points,
-                                                                           out NativeArray<float3> positions) {
-        keys = new NativeArray<JobMeshDataKeys>(dataArray.Length, Allocator.TempJob);
-        List<float2> pointsList = new List<float2>();
-        List<float3> positionsList = new List<float3>();
-
-        for (int i = 0; i < dataArray.Length; ++i) {
-            WorldMapMeshData data = dataArray[i];
-            NativeArray<float2> dataPoints = data.GetPoints();
-            NativeArray<float3> dataPositions = data.GetPositions();
-
-            keys[i] = new JobMeshDataKeys {
-                PointIndex = pointsList.Count,
-                PointsLength = dataPoints.Length,
-                PositionsIndex = positionsList.Count,
-                PositionsLength = dataPositions.Length
-            };
-
-            pointsList.AddRange(dataPoints);
-            positionsList.AddRange(dataPositions);
+            return data;
         }
 
-        points = new NativeArray<float2>(pointsList.ToArray(), Allocator.TempJob);
-        positions = new NativeArray<float3>(positionsList.ToArray(), Allocator.TempJob);
-    }
-    
-    private void CleanupAfterGeneratingMeshes() {
-        _currentMeshDataArray = null;
+        private GameObject CreateMesh(WorldMapMeshData data) {
+            float3 extrusionHeight = new float3(0, 0, ExtrusionHeight);
+            extrusionHeight = WorldMapMeshHelper.RotateVertexToMatchParentRotation(extrusionHeight, data.GetTransform());
 
-        if (_currentResultArray.IsCreated)
-            _currentResultArray.Dispose();
-    }
+            // create mesh and load data into it
+            Mesh mesh = new Mesh() { bounds = data.GetZoneInfo().Bounds };
 
-    public void OnDestroy() {
-        if (ZoneTriangles.IsCreated)
-            ZoneTriangles.Dispose();
+            ApplyAndDisposeWritableMeshData(data.GetMeshDataArray(), mesh, MeshUpdateFlags.DontRecalculateBounds);
 
-        if (NeighborTriangles.IsCreated)
-            NeighborTriangles.Dispose();
+            GameObject meshObject = CreateGameObjectFromMesh(mesh, data.GetZoneInfo().Parent, data.GetZoneInfo().Name, data.GetMaterials());
+            meshObject.transform.position += (Vector3)(data.GetGlobalRef() + extrusionHeight);
 
-        if (FlatTriangles.IsCreated)
-            FlatTriangles.Dispose();
-    }
+            data.Dispose();
 
-    [BurstDiscard]
-    private static void InitStaticTris() {
-        if (ZoneTriangles.IsCreated || NeighborTriangles.IsCreated || FlatTriangles.IsCreated)
-            return;
+            return meshObject;
+        }
 
-        ZoneTriangles = new NativeArray<ushort>(6, Allocator.Persistent);
-        NeighborTriangles = new NativeArray<ushort>(6, Allocator.Persistent);
-        FlatTriangles = new NativeArray<ushort>(12, Allocator.Persistent);
+        private void BuildMeshPointsAndPositions(WorldMapMeshData[] dataArray, out NativeArray<JobMeshDataKeys> keys,
+                                                                               out NativeArray<float2> points,
+                                                                               out NativeArray<float3> positions) {
+            keys = new NativeArray<JobMeshDataKeys>(dataArray.Length, Allocator.TempJob);
+            List<float2> pointsList = new List<float2>();
+            List<float3> positionsList = new List<float3>();
 
-        ZoneTriangles.CopyFrom(new ushort[] { 1, 2, 0, 3, 2, 1 });
-        NeighborTriangles.CopyFrom(new ushort[] { 0, 2, 1, 1, 2, 3 });
-        FlatTriangles.CopyFrom(new ushort[] { 1, 2, 0, 3, 2, 1, 0, 2, 1, 1, 2, 3 });
+            for (int i = 0; i < dataArray.Length; ++i) {
+                WorldMapMeshData data = dataArray[i];
+                NativeArray<float2> dataPoints = data.GetPoints();
+                NativeArray<float3> dataPositions = data.GetPositions();
+
+                keys[i] = new JobMeshDataKeys {
+                    PointIndex = pointsList.Count,
+                    PointsLength = dataPoints.Length,
+                    PositionsIndex = positionsList.Count,
+                    PositionsLength = dataPositions.Length
+                };
+
+                pointsList.AddRange(dataPoints);
+                positionsList.AddRange(dataPositions);
+            }
+
+            points = new NativeArray<float2>(pointsList.ToArray(), Allocator.TempJob);
+            positions = new NativeArray<float3>(positionsList.ToArray(), Allocator.TempJob);
+        }
+
+        private void CleanupAfterGeneratingMeshes() {
+            _currentMeshDataArray = null;
+
+            if (_currentResultArray.IsCreated)
+                _currentResultArray.Dispose();
+        }
+
+        public void OnDestroy() {
+            if (ZoneTriangles.IsCreated)
+                ZoneTriangles.Dispose();
+
+            if (NeighborTriangles.IsCreated)
+                NeighborTriangles.Dispose();
+
+            if (FlatTriangles.IsCreated)
+                FlatTriangles.Dispose();
+        }
+
+        [BurstDiscard]
+        private static void InitStaticTris() {
+            if (ZoneTriangles.IsCreated || NeighborTriangles.IsCreated || FlatTriangles.IsCreated)
+                return;
+
+            ZoneTriangles = new NativeArray<ushort>(6, Allocator.Persistent);
+            NeighborTriangles = new NativeArray<ushort>(6, Allocator.Persistent);
+            FlatTriangles = new NativeArray<ushort>(12, Allocator.Persistent);
+
+            ZoneTriangles.CopyFrom(new ushort[] { 1, 2, 0, 3, 2, 1 });
+            NeighborTriangles.CopyFrom(new ushort[] { 0, 2, 1, 1, 2, 3 });
+            FlatTriangles.CopyFrom(new ushort[] { 1, 2, 0, 3, 2, 1, 0, 2, 1, 1, 2, 3 });
+        }
     }
 }

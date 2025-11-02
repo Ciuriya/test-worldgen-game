@@ -1,37 +1,40 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using PendingName.WorldGen;
 
-public class GameplaySystem : CoreSystem {
+namespace PendingName.Core {
+    public class GameplaySystem : CoreSystem {
 
-    private bool _shouldGenerateWorld = false;
-    private WorldGenerator _worldGenerator;
+        private bool _shouldGenerateWorld = false;
+        private WorldGenerator _worldGenerator;
 
-    public void LoadGame() {
-        Debug.Log("Starting game loading...");
+        public void LoadGame() {
+            Debug.Log("Starting game loading...");
 
-        _shouldGenerateWorld = true;
+            _shouldGenerateWorld = true;
 
-        SceneManager.LoadScene(2);
-    }
-
-    public override void OnSceneChanged(Scene currentScene, Scene nextScene) {
-        base.OnSceneChanged(currentScene, nextScene);
-
-        if (_shouldGenerateWorld) {
-            _shouldGenerateWorld = false;
-            CreateWorld();
+            SceneManager.LoadScene(2);
         }
-    }
 
-	public override void EarlyUpdate() {
-		base.EarlyUpdate();
+        public override void OnSceneChanged(Scene currentScene, Scene nextScene) {
+            base.OnSceneChanged(currentScene, nextScene);
 
-        _worldGenerator?.EarlyUpdate();
-	}
+            if (_shouldGenerateWorld) {
+                _shouldGenerateWorld = false;
+                CreateWorld();
+            }
+        }
 
-    private void CreateWorld() {
-        WorldGeneratorData worldGenData = GameCore.Instance.GetScriptableObject<WorldGeneratorData>("DefaultWorldGenData");
-        _worldGenerator = new WorldGenerator(worldGenData);
-        _worldGenerator.StartGenerationSequence();
+        public override void EarlyUpdate() {
+            base.EarlyUpdate();
+
+            _worldGenerator?.EarlyUpdate();
+        }
+
+        private void CreateWorld() {
+            WorldGeneratorData worldGenData = GameCore.Instance.GetScriptableObject<WorldGeneratorData>("DefaultWorldGenData");
+            _worldGenerator = new WorldGenerator(worldGenData);
+            _worldGenerator.StartGenerationSequence();
+        }
     }
 }

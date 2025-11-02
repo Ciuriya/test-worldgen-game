@@ -2,79 +2,81 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class GameCore : MonoBehaviour {
+namespace PendingName.Core {
+    public class GameCore : MonoBehaviour {
+        public static GameCore Instance {
+            get => _instance;
+            set => _instance = value;
+        }
+        private static GameCore _instance;
 
-    public static GameCore Instance {
-        get => _instance;
-        set => _instance = value;
-    }
-    private static GameCore _instance;
+        public List<GameObject> Prefabs;
+        public List<ScriptableObject> ScriptableObjects;
 
-    public List<GameObject> Prefabs;
-    public List<ScriptableObject> ScriptableObjects;
+        private List<CoreSystem> _systems;
+        private string _sceneName;
 
-    private List<CoreSystem> _systems;
-    private string _sceneName;
+        void Start() {
+            if (_instance != null) {
+                Destroy(this);
+                return;
+            }
 
-    void Start() {
-        if (_instance != null) {
-            Destroy(this);
-            return;
+            _sceneName = SceneManager.GetActiveScene().name;
+
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+            InitializeSystems();
+
+            SceneManager.activeSceneChanged += OnSceneChanged;
         }
 
-        _sceneName = SceneManager.GetActiveScene().name;
+        void Update() {
+            foreach (CoreSystem system in _systems) system.EarlyUpdate();
+            foreach (CoreSystem system in _systems) system.Update();
+        }
 
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-        InitializeSystems();
+        void LateUpdate() {
+            foreach (CoreSystem system in _systems) system.LateUpdate();
+        }
 
-        SceneManager.activeSceneChanged += OnSceneChanged;
-    }
+		void OnDestroy() {
+            SceneManager.activeSceneChanged -= OnSceneChanged;
+		}
 
-    void Update() {
-        foreach (CoreSystem system in _systems) system.EarlyUpdate();
-        foreach (CoreSystem system in _systems) system.Update();
-    }
+		private void InitializeSystems() {
+            _systems = new List<CoreSystem> {
+                new PrefabSystem(),
+                new UISystem(),
+                new GameplaySystem(),
+                new SettingsSystem()
+            };
 
-    void LateUpdate() {
-        foreach (CoreSystem system in _systems) system.LateUpdate();
-    }
+            foreach (CoreSystem system in _systems) system.EarlyStart();
+            foreach (CoreSystem system in _systems) system.Start();
+            foreach (CoreSystem system in _systems) system.LateStart();
+        }
 
-    private void InitializeSystems() {
-        _systems = new List<CoreSystem> {
-            new PrefabSystem(),
-            new UISystem(),
-            new GameplaySystem(),
-            new SettingsSystem()
-        };
+        private void OnSceneChanged(Scene currentScene, Scene nextScene) {
+            Debug.Log($"Changing scenes from {_sceneName} to {nextScene.name}!");
 
-        foreach (CoreSystem system in _systems) system.EarlyStart();
-        foreach (CoreSystem system in _systems) system.Start();
-        foreach (CoreSystem system in _systems) system.LateStart();
-    }
+            _sceneName = nextScene.name;
 
-    private void OnSceneChanged(Scene currentScene, Scene nextScene) {
-        Debug.Log($"Changing scenes from {_sceneName} to {nextScene.name}!");
+            foreach (CoreSystem system in _systems) system.OnSceneChanged(currentScene, nextScene);
+        }
 
-        _sceneName = nextScene.name;
+        public T GetSystem<T>() where T : CoreSystem {
+            foreach (CoreSystem system in _systems)
+                if (system is T result)
+                    return result;
 
-        foreach (CoreSystem system in _systems) system.OnSceneChanged(currentScene, nextScene);
-    }
+            return null;
+        }
 
-    public T GetSystem<T>() where T : CoreSystem {
-        foreach (CoreSystem system in _systems)
-            if (system is T result)
-                return result;
+        // some quick shortcuts
+        public GameObject GetPrefab(string name) => GetSystem<PrefabSystem>().GetPrefab(name);
 
-        return null;
-    }
-
-    // some quick shortcuts
-    public GameObject GetPrefab(string name) {
-        return GetSystem<PrefabSystem>().GetPrefab(name);
-    }
-
-    public T GetScriptableObject<T>(string name) where T : ScriptableObject {
-        return GetSystem<PrefabSystem>().GetScriptableObject<T>(name);
+        public T GetScriptableObject<T>(string name) where T : ScriptableObject =>
+            GetSystem<PrefabSystem>().GetScriptableObject<T>(name);
     }
 }

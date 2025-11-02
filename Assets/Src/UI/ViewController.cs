@@ -1,13 +1,12 @@
-using UnityEngine;
+namespace PendingName.UI {
+    public abstract class ViewController {
+        public View BaseView { get; protected set; }
 
-public abstract class ViewController {
+        public ViewController() { }
 
-    public View BaseView { get; protected set; }
-
-    public ViewController() { }
-
-    public virtual void EarlyUpdate() { }
-    public virtual void Update() { }
-    public virtual void LateUpdate() { }
-    public virtual void Destroy() { BaseView.Destroy(); }
+        public virtual void EarlyUpdate() { }
+        public virtual void Update() { }
+        public virtual void LateUpdate() { }
+        public virtual void Destroy() { BaseView.Destroy(); }
+    }
 }
