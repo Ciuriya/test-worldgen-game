@@ -1,5 +1,6 @@
 using Delaunay;
 using PendingName.Extruders.WorldMap;
+using PendingName.Log;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -40,8 +41,8 @@ namespace PendingName.WorldGen {
             _totalGenerationTime = Math.Round(Time.realtimeSinceStartupAsDouble - _totalGenerationTime, 3);
             double extrusionTime = Math.Round(_extruder.GenerationTime, 3);
 
-            Debug.Log($"Generated in {_totalGenerationTime} seconds.\n" +
-                      $"Extrusion took {extrusionTime} seconds.");
+            CustomLogger.Instance.Log(LogLevel.Info, $"Generated in {_totalGenerationTime} seconds.\n"
+                                                   + $"Extrusion took {extrusionTime} seconds.");
         }
 
         public Voronoi GenerateVoronoi() {

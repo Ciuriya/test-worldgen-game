@@ -1,5 +1,6 @@
 #if UNITY_EDITOR // just in case
 
+using PendingName.Log;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -34,7 +35,7 @@ namespace PendingName.TilemapEditor {
 
             if (stylesheet)
                 rootVisualElement.styleSheets.Add(stylesheet);
-            else Debug.LogError("Stylesheet could not be found.");
+            else CustomLogger.Instance.Log(LogLevel.Error, "Stylesheet could not be found.");
 
             mainPanel.AddToClassList("main-panel");
             rootVisualElement.Add(mainPanel);

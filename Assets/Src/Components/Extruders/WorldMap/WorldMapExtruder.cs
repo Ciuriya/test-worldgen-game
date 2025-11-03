@@ -9,6 +9,7 @@ using System.Collections;
 using System;
 using Unity.Burst;
 using PendingName.WorldGen;
+using PendingName.Log;
 
 namespace PendingName.Extruders.WorldMap {
     public class WorldMapExtruder : Extruder {
@@ -122,7 +123,7 @@ namespace PendingName.Extruders.WorldMap {
                 else FinalizeFloorMeshes();
             }
             catch (Exception ex) {
-                Debug.LogError(ex.Message + "\n" + ex.StackTrace);
+                CustomLogger.Instance.Log(LogLevel.Error, ex.Message, ex.StackTrace);
 
                 if (!isEdge) CleanupAfterGeneratingMeshes();
             }
@@ -251,7 +252,9 @@ namespace PendingName.Extruders.WorldMap {
                 _currentResultArray.Dispose();
         }
 
-        public void OnDestroy() {
+        private static void CleanStaticTris(object sender, EventArgs args) => CleanStaticTris();
+
+        private static void CleanStaticTris() {
             if (ZoneTriangles.IsCreated)
                 ZoneTriangles.Dispose();
 
@@ -260,10 +263,15 @@ namespace PendingName.Extruders.WorldMap {
 
             if (FlatTriangles.IsCreated)
                 FlatTriangles.Dispose();
+
+            AppDomain.CurrentDomain.DomainUnload -= CleanStaticTris;
+            Application.quitting -= CleanStaticTris;
         }
 
         [BurstDiscard] [RuntimeInitializeOnLoadMethod]
         private static void InitStaticTris() {
+            CleanStaticTris();
+
             ZoneTriangles = new NativeArray<ushort>(6, Allocator.Persistent);
             NeighborTriangles = new NativeArray<ushort>(6, Allocator.Persistent);
             FlatTriangles = new NativeArray<ushort>(12, Allocator.Persistent);
@@ -271,6 +279,9 @@ namespace PendingName.Extruders.WorldMap {
             ZoneTriangles.CopyFrom(new ushort[] { 1, 2, 0, 3, 2, 1 });
             NeighborTriangles.CopyFrom(new ushort[] { 0, 2, 1, 1, 2, 3 });
             FlatTriangles.CopyFrom(new ushort[] { 1, 2, 0, 3, 2, 1, 0, 2, 1, 1, 2, 3 });
+
+            AppDomain.CurrentDomain.DomainUnload += CleanStaticTris;
+            Application.quitting += CleanStaticTris;
         }
     }
 }

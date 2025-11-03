@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using PendingName.WorldGen;
+using PendingName.Log;
 
 namespace PendingName.Core {
     public class GameplaySystem : CoreSystem {
@@ -9,7 +10,7 @@ namespace PendingName.Core {
         private WorldGenerator _worldGenerator;
 
         public void LoadGame() {
-            Debug.Log("Starting game loading...");
+            CustomLogger.Instance.Log(LogLevel.Info, "Starting game loading...");
 
             _shouldGenerateWorld = true;
 

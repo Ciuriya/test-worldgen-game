@@ -1,3 +1,4 @@
+using PendingName.Log;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -14,7 +15,7 @@ public class EditorStartFromLoading {
 
         if (sceneIndex == 0) return; // started from loading screen already
 
-        Debug.Log("Going to loading screen...");
+        CustomLogger.Instance.Log(LogLevel.Info, "Going to loading screen...");
 
         SceneManager.LoadScene(0);
     }

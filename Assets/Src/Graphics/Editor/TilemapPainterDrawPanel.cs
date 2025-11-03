@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using PendingName.Log;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -102,7 +103,7 @@ namespace PendingName.TilemapEditor {
                 Texture2D indexMap = evt.newValue is Texture2D text ? text : null;
 
                 if (indexMap == null) {
-                    Debug.LogError("Invalid index map.");
+                    CustomLogger.Instance.Log(LogLevel.Error, "Invalid index map.");
                     return;
                 }
 
@@ -110,7 +111,8 @@ namespace PendingName.TilemapEditor {
                 int height = indexMap.height;
 
                 if (width != height) {
-                    Debug.LogError("Width and Height are not equal, you may only load index maps that are square.");
+                    CustomLogger.Instance.Log(LogLevel.Error, "Width and Height are not equal, "
+                                                            + "you may only load index maps that are square.");
                     return;
                 }
 
@@ -124,7 +126,7 @@ namespace PendingName.TilemapEditor {
                 nameField.SetValueWithoutNotify(evt.newValue.name);
                 drawViewport.schedule.Execute(() => OnDrawTextureResize?.Invoke(output.width));
 
-                Debug.Log($"Loaded Index Map: {indexMap.name}");
+                CustomLogger.Instance.Log(LogLevel.Info, $"Loaded Index Map: {indexMap.name}");
             });
 
             return drawTextureLoadField;
@@ -232,7 +234,7 @@ namespace PendingName.TilemapEditor {
             Texture2D indexMapTexture = BuildIndexMapTexture();
             SaveIndexMapTextureAsFile(fileName, indexMapTexture);
 
-            Debug.Log($"Saved Index Map to {saveFolder}/{fileName}.png");
+            CustomLogger.Instance.Log(LogLevel.Info, $"Saved Index Map to {saveFolder}/{fileName}.png");
         }
 
         private Texture2D BuildIndexMapTexture() {
@@ -269,7 +271,7 @@ namespace PendingName.TilemapEditor {
             drawnCells = new Dictionary<Vector2Int, int>();
 
             if (!atlasViewport.GetTexture()) {
-                Debug.LogError("No atlas loaded, cannot deconstruct index map.");
+                CustomLogger.Instance.Log(LogLevel.Error, "No atlas loaded, cannot deconstruct index map.");
                 return null;
             }
 

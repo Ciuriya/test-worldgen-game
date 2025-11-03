@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using PendingName.Log;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -61,7 +62,7 @@ namespace PendingName.Core {
         }
 
         private void OnSceneChanged(Scene currentScene, Scene nextScene) {
-            Debug.Log($"Changing scenes from {_sceneName} to {nextScene.name}!");
+            CustomLogger.Instance.Log(LogLevel.Info, $"Changing scenes from {_sceneName} to {nextScene.name}!");
 
             _sceneName = nextScene.name;
 
