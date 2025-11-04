@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using PendingName.Log;
 using UnityEngine;
@@ -14,7 +15,7 @@ namespace PendingName.Core {
         public List<GameObject> Prefabs;
         public List<ScriptableObject> ScriptableObjects;
 
-        private List<CoreSystem> _systems;
+        private Dictionary<Type, CoreSystem> _systems;
         private string _sceneName;
 
         [RuntimeInitializeOnLoadMethod]
@@ -36,12 +37,12 @@ namespace PendingName.Core {
         }
 
         void Update() {
-            foreach (CoreSystem system in _systems) system.EarlyUpdate();
-            foreach (CoreSystem system in _systems) system.Update();
+            foreach (CoreSystem system in _systems.Values) system.EarlyUpdate();
+            foreach (CoreSystem system in _systems.Values) system.Update();
         }
 
         void LateUpdate() {
-            foreach (CoreSystem system in _systems) system.LateUpdate();
+            foreach (CoreSystem system in _systems.Values) system.LateUpdate();
         }
 
 		void OnDestroy() {
@@ -49,16 +50,16 @@ namespace PendingName.Core {
 		}
 
 		private void InitializeSystems() {
-            _systems = new List<CoreSystem> {
-                new PrefabSystem(),
-                new UISystem(),
-                new GameplaySystem(),
-                new SettingsSystem()
-            };
+            _systems = new Dictionary<Type, CoreSystem>();
 
-            foreach (CoreSystem system in _systems) system.EarlyStart();
-            foreach (CoreSystem system in _systems) system.Start();
-            foreach (CoreSystem system in _systems) system.LateStart();
+            AddSystem(new PrefabSystem());
+            AddSystem(new UISystem());
+            AddSystem(new GameplaySystem());
+            AddSystem(new SettingsSystem());
+
+            foreach (CoreSystem system in _systems.Values) system.EarlyStart();
+            foreach (CoreSystem system in _systems.Values) system.Start();
+            foreach (CoreSystem system in _systems.Values) system.LateStart();
         }
 
         private void OnSceneChanged(Scene currentScene, Scene nextScene) {
@@ -66,11 +67,15 @@ namespace PendingName.Core {
 
             _sceneName = nextScene.name;
 
-            foreach (CoreSystem system in _systems) system.OnSceneChanged(currentScene, nextScene);
+            foreach (CoreSystem system in _systems.Values) system.OnSceneChanged(currentScene, nextScene);
         }
 
+        private void AddSystem<T>(T system) where T : CoreSystem {
+            _systems[typeof(T)] = system;
+		}
+
         public T GetSystem<T>() where T : CoreSystem {
-            foreach (CoreSystem system in _systems)
+            foreach (CoreSystem system in _systems.Values)
                 if (system is T result)
                     return result;
 

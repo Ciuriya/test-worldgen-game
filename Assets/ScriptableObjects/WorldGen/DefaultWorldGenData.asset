@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa345193730a6b34b93422471904cf28, type: 3}
   m_Name: DefaultWorldGenData
   m_EditorClassIdentifier: 
-  CellCount: 100
+  CellCount: 2500
   LloydRelaxations: 2
   GrammarRules:
   - {fileID: 11400000, guid: 4980d5294703fcd4080f980ef6d0bd56, type: 2}
