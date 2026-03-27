@@ -1,4 +1,3 @@
-using Unity.Burst;
 using Unity.Mathematics;
 
 public static class FloatExtensions {

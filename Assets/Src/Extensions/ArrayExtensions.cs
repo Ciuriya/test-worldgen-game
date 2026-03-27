@@ -1,5 +1,3 @@
-using System;
-
 public static class ArrayExtensions {
     public static T[] Flatten<T>(this T[][] array) {
         T[] flat = new T[array[0].Length + array[1].Length];

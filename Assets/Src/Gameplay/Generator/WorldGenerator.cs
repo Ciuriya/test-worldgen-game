@@ -14,13 +14,17 @@ namespace PendingName.WorldGen {
         private double _totalGenerationTime;
         private WorldMapExtruder _extruder;
 
+        private Action<World> _generationCallback;
+
         public WorldGenerator(WorldGeneratorData worldGenData) {
             _data = worldGenData;
         }
 
         // multi-thread? can this even be multi-threaded really? maybe update the gen text here? maybe make it a step enum system? no clue
         // could also be cool to make it into a loading animation
-        public void StartGenerationSequence() {
+        public void StartGenerationSequence(Action<World> callback) {
+            _generationCallback = callback;
+
             _world?.Destroy();
 
             _totalGenerationTime = Time.realtimeSinceStartupAsDouble;
@@ -43,6 +47,8 @@ namespace PendingName.WorldGen {
 
             CustomLogger.Instance.Log(LogLevel.Info, $"Generated in {_totalGenerationTime} seconds.\n"
                                                    + $"Extrusion took {extrusionTime} seconds.");
+
+            _generationCallback?.Invoke(_world);
         }
 
         public Voronoi GenerateVoronoi() {
